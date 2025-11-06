@@ -1,9 +1,17 @@
 // Local video files from /vids directory
+// Each entry is an object with both mp4 and webm sources
+const GITHUB_RAW_BASE = 'https://github.com/rockenman1234/kafka/raw/main/vids/';
 const videoFiles = [
-    'vids/rick-astley.mp4',
-    'vids/la-cucaracha.mp4',
-    'vids/messi-glaze.mp4',
-    // Add more video file paths as needed
+    {
+        webm: GITHUB_RAW_BASE + 'rick-astley.webm'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'la-cucaracha.webm'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'messi-glaze.webm'
+    }
+    // Add more video file objects as needed
 ];
 
 let currentChannel = 0;
@@ -140,75 +148,6 @@ function stopStaticNoise() {
     }
 }
 
-// Setup audio analyzer for speaker animation
-function setupAudioAnalyzer() {
-    if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    
-    if (videoElement) {
-        // Disconnect previous audio source if it exists
-        if (audioSource) {
-            try {
-                audioSource.disconnect();
-            } catch (e) {
-                console.log('Error disconnecting audio source:', e);
-            }
-        }
-        
-        // Create new analyzer if it doesn't exist
-        if (!analyser) {
-            analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256;
-            animateSpeakers();
-        }
-        
-        try {
-            audioSource = audioContext.createMediaElementSource(videoElement);
-            audioSource.connect(analyser);
-            analyser.connect(audioContext.destination);
-        } catch (e) {
-            console.log('Audio source already connected or error:', e);
-        }
-    }
-}
-
-// Animate speakers based on audio levels
-function animateSpeakers() {
-    if (!analyser) return;
-    
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-    analyser.getByteFrequencyData(dataArray);
-    
-    // Calculate average volume
-    const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-    
-    // Get speaker elements
-    const speakerLeft = document.querySelector('.speaker-left');
-    const speakerRight = document.querySelector('.speaker-right');
-    
-    // Threshold for animation (adjust sensitivity)
-    if (average > 15 && !isMuted) {
-        const scale = 1 + (average / 1000);
-        const shadowIntensity = Math.min(average / 10, 15);
-        
-        if (speakerLeft && speakerRight) {
-            speakerLeft.style.transform = `scale(${scale})`;
-            speakerRight.style.transform = `scale(${scale})`;
-            speakerLeft.style.boxShadow = `inset 0 2px ${shadowIntensity}px rgba(0, 0, 0, 0.8)`;
-            speakerRight.style.boxShadow = `inset 0 2px ${shadowIntensity}px rgba(0, 0, 0, 0.8)`;
-        }
-    } else {
-        if (speakerLeft && speakerRight) {
-            speakerLeft.style.transform = 'scale(1)';
-            speakerRight.style.transform = 'scale(1)';
-            speakerLeft.style.boxShadow = 'inset 0 2px 8px rgba(0, 0, 0, 0.8)';
-            speakerRight.style.boxShadow = 'inset 0 2px 8px rgba(0, 0, 0, 0.8)';
-        }
-    }
-    
-    animationFrameId = requestAnimationFrame(animateSpeakers);
-}
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -247,54 +186,61 @@ function loadChannel(channelIndex) {
     // Clear previous content
     videoFrame.innerHTML = '';
     
-    // Create native HTML5 video element
+    // Create native HTML5 video element with only webm source
     videoElement = document.createElement('video');
-    videoElement.src = videoFiles[channelIndex];
     videoElement.autoplay = true;
     videoElement.loop = true;
     videoElement.playsInline = true;
     videoElement.muted = isMuted;
     videoElement.volume = volumeLevel / 100;
-    
+
+    // Add <source> element for webm only
+    const webmSource = document.createElement('source');
+    webmSource.src = videoFiles[channelIndex].webm;
+    webmSource.type = 'video/webm';
+    videoElement.appendChild(webmSource);
+
     // Prevent user from pausing the video
     videoElement.addEventListener('pause', () => {
         if (!videoElement.ended) {
             videoElement.play();
         }
     });
-    
+
     // Ensure video keeps playing
     videoElement.addEventListener('ended', () => {
         videoElement.play();
     });
-    
+
     // Style the video element
     videoElement.style.width = '100%';
     videoElement.style.height = '100%';
     videoElement.style.objectFit = 'cover';
-    
+
     // Add to DOM
     videoFrame.appendChild(videoElement);
-    
+
+    // If unmuted, ensure video is unmuted
+    if (!isMuted) {
+        videoElement.muted = false;
+    }
+
     // Update channel display
     channelDisplay.textContent = `CH ${channelIndex + 1}`;
     
-    // Hide static after a brief moment and stop animation
-    setTimeout(() => {
+    // Hide static only after video is ready to play
+    videoElement.addEventListener('canplay', () => {
         staticNoise.classList.remove('active');
         stopStaticNoise();
-    }, 100);
+    }, { once: true });
     
-    // Force play video immediately (always muted on load)
+    // Force play video immediately
     const playPromise = videoElement.play();
     if (playPromise !== undefined) {
         playPromise.then(() => {
             // Autoplay started successfully
-            console.log('Video playing (muted)');
-            
-            // If user has already unmuted, setup audio analyzer for new video
             if (!isMuted) {
-                setupAudioAnalyzer();
+                videoElement.muted = false;
             }
         }).catch(err => {
             // Autoplay was prevented
@@ -310,7 +256,7 @@ function changeChannel(direction) {
     staticNoise.classList.add('active');
     drawStaticNoise();
     playStaticSound();
-    
+
     // Wait 0.5 seconds of static before changing channel
     setTimeout(() => {
         currentChannel += direction;
@@ -320,6 +266,7 @@ function changeChannel(direction) {
             currentChannel = videoFiles.length - 1;
         }
         loadChannel(currentChannel);
+        // (Static will be hidden by video canplay event)
     }, 500);
 }
 
@@ -327,21 +274,6 @@ function toggleMute() {
     isMuted = !isMuted;
     if (videoElement) {
         videoElement.muted = isMuted;
-        // On unmute, create or resume AudioContext only after user gesture
-        if (!isMuted) {
-            if (!audioContext) {
-                try {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                } catch (e) {
-                    console.log('Web Audio API not supported:', e);
-                }
-            } else if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-            if (!analyser) {
-                setupAudioAnalyzer();
-            }
-        }
     }
     showVolumeIndicator();
 }
