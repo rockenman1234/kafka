@@ -1,3 +1,61 @@
+@media (max-width: 700px) {
+    .tv-container {
+        width: 100vw;
+        max-width: 100vw;
+        aspect-ratio: 4/3;
+        padding: 10vw 2vw 18vw 2vw;
+        border-radius: 4vw;
+        height: auto;
+        margin-bottom: 70px; /* Lower the TV frame further */
+        scale: 0.98;
+        /* Mobile-only helper variable: positive value moves the unmute tooltip up
+           (we add this to existing bottom calculations) */
+        --unmute-offset: 40px;
+        /* Move the whole TV container down by ~20px on mobile only */
+        transform: translateY(20px);
+    }
+    .tv-brand {
+        top: 20px !important;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 20px;
+        z-index: 2;
+    }
+    /* Place the unmute tooltip directly under the volume knob, arrow at top */
+    .unmute-tooltip {
+        left: calc(50% + 55px) !important; /* Move right under the knob */
+        transform: translateX(-50%) !important;
+        top: unset !important;
+        right: unset !important;
+        margin: 0 !important;
+        z-index: 1001;
+        flex-direction: column;
+        align-items: center;
+        min-width: 180px;
+        /* Directly under the volume knob; adds the mobile-only offset value to raise it */
+        bottom: calc(18vw + 60px + var(--unmute-offset, 40px));
+        position: fixed !important;
+    }
+    .unmute-tooltip .tooltip-arrow {
+        border-bottom: 18px solid #ffffff;
+        border-top: none;
+        border-right: 12px solid transparent;
+        border-left: 12px solid transparent;
+        width: 0;
+        height: 0;
+        margin-top: -8px;
+        margin-bottom: 8px;
+        margin-left: 0;
+        margin-right: 0;
+        filter: drop-shadow(0 -2px 3px rgba(0,0,0,0.2));
+        transform: none;
+        align-self: center;
+    }
+    .unmute-tooltip .tooltip-text {
+        text-align: center;
+        width: 100%;
+    }
+}
 * {
     margin: 0;
     padding: 0;
@@ -62,8 +120,10 @@ body::after {
 
 .tv-container {
     position: relative;
-    width: 800px;
-    height: 650px;
+    width: 90vw;
+    max-width: 800px;
+    aspect-ratio: 4/3;
+    height: auto;
     background: 
         repeating-linear-gradient(
             90deg,
@@ -219,20 +279,59 @@ body::after {
 }
 
 @media (max-width: 600px) {
+    .tv-container {
+        width: 100vw;
+        max-width: 100vw;
+        aspect-ratio: 4/3;
+        padding: 10vw 2vw 18vw 2vw;
+        border-radius: 4vw;
+        height: auto;
+        margin-top: 20px;
+        /* ensure the same mobile offset variable is available in the 600px media query
+           and keep the TV moved down on smaller screens too */
+        --unmute-offset: 40px;
+        transform: translateY(20px);
+    }
+    /* Move the floating tooltip under the dial */
+    .floating-tooltip, .start-tooltip {
+        top: unset !important;
+        /* include the same offset so it can be nudged up on mobile */
+        bottom: calc(8vw + var(--unmute-offset, 0px)) !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        right: unset !important;
+        margin: 0 !important;
+        z-index: 1001;
+    }
+    .screen-container {
+        width: 100%;
+        aspect-ratio: 4/3;
+        max-height: 60vw;
+        height: auto;
+        border-radius: 2vw;
+    }
+    .video-frame {
+        width: 100%;
+        height: 100%;
+        aspect-ratio: 4/3;
+    }
+    .video-frame video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        aspect-ratio: 4/3;
+    }
     .info-modal-content {
         padding: 30px 25px;
-        max-width: 90%;
+        max-width: 95vw;
     }
-
     .info-modal-content h2 {
         font-size: 24px;
         letter-spacing: 2px;
     }
-
     .info-modal-content p {
         font-size: 14px;
     }
-
     .info-button {
         width: 30px;
         height: 30px;
@@ -245,7 +344,9 @@ body::after {
 .screen-container {
     position: relative;
     width: 100%;
-    height: 400px;
+    aspect-ratio: 4/3;
+    max-height: 60vw;
+    height: auto;
     background: 
         linear-gradient(135deg, rgba(42, 37, 32, 0.95) 0%, rgba(26, 21, 16, 0.98) 50%, rgba(42, 37, 32, 0.95) 100%),
         repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(80, 70, 60, 0.1) 2px, rgba(80, 70, 60, 0.1) 4px),
@@ -253,7 +354,11 @@ body::after {
         radial-gradient(ellipse at center, #2a2520 0%, #1a1510 100%);
     border-radius: 8px;
     overflow: hidden;
+    border: 8px solid #2a2520;
     box-shadow: 
+        /* subtle inner outline added first so it appears on top of the
+           existing inner darkening and external drop shadow */
+        inset 0 0 0 1px rgba(200,200,200,0.12),
         inset 0 0 30px rgba(0, 0, 0, 0.8),
         0 5px 20px rgba(0, 0, 0, 0.5);
 }
@@ -436,9 +541,12 @@ body::after {
 }
 
 .video-frame {
-    width: 100%;
-    height: 100%;
-    position: relative;
+    width: calc(100% + 16px);
+    height: calc(100% + 16px);
+    aspect-ratio: 4/3;
+    position: absolute;
+    top: -8px;
+    left: -8px;
     z-index: 2;
     background: transparent; /* Ensure background is transparent so GIF shows through */
 }
@@ -448,16 +556,21 @@ iframe {
     height: 100%;
     border: none;
     display: block;
+    object-fit: cover;
 }
 
 /* Hide YouTube logo and controls */
 .video-frame iframe {
     pointer-events: auto;
+    object-fit: cover;
 }
 
 .video-frame video {
     pointer-events: none;
-    background: transparent; /* Ensure video background is transparent */
+    background: transparent;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .controls-panel {
@@ -958,5 +1071,39 @@ video {
     50% {
         transform: translateY(-8px);
     }
+}
+
+/* Glow effect for volume knob when muted (applies to all screen sizes) */
+.knob.glow {
+    box-shadow: 0 0 16px 4px #ffbdbd, 0 5px 10px rgba(0,0,0,0.7),
+        inset 0 3px 6px rgba(255,255,255,0.15),
+        inset 0 -2px 4px rgba(0,0,0,0.5);
+    border-color: #ffbdbd;
+    transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+/* Explicit mobile-only override to ensure the TV frame and inner screen
+   shift down to match the desired layout. Uses !important to avoid other
+   mobile rules unintentionally cancelling the translation. */
+@media (max-width: 700px) {
+    .tv-container,
+    .tv-container .screen-container {
+        transform: translateY(30px) !important;
+    }
+}
+
+/* Add faint grey inner outline to the video player on all screen sizes.
+   Use a pseudo-element so we don't overwrite existing borders or shadows. */
+.tv-container .screen-container {
+    position: relative; /* ensure pseudo-element is positioned correctly */
+}
+.tv-container .screen-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    /* subtle inner stroke */
+    box-shadow: inset 0 0 0 1px rgba(200,200,200,0.06);
 }
 

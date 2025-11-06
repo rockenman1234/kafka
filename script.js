@@ -171,6 +171,9 @@ document.addEventListener('DOMContentLoaded', () => {
             videoElement.play();
         }
     });
+    
+    // Add glow to volume knob when muted
+    setKnobGlow();
 });
 
 function initializeTV() {
@@ -275,6 +278,7 @@ function toggleMute() {
     if (videoElement) {
         videoElement.muted = isMuted;
     }
+    setKnobGlow();
     showVolumeIndicator();
 }
 
@@ -307,6 +311,17 @@ function showVolumeIndicator() {
     volumeTimeout = setTimeout(() => {
         volumeIndicator.classList.remove('show');
     }, 2000);
+}
+
+// Add glow to volume knob when muted
+function setKnobGlow() {
+    const knob = document.getElementById('volumeKnob');
+    if (!knob) return;
+    if (isMuted) {
+        knob.classList.add('glow');
+    } else {
+        knob.classList.remove('glow');
+    }
 }
 
 // Cockroach easter egg
@@ -367,6 +382,70 @@ function spawnCockroach() {
         cockroach.remove();
     }, 4500);
 }
+
+// --- Speaker Animation ---
+let speakerAnimationId = null;
+function startSpeakerAnimation() {
+    stopSpeakerAnimation();
+    const left = document.querySelector('.speaker-left');
+    const right = document.querySelector('.speaker-right');
+    if (!left || !right) return;
+    function animate() {
+        // Only animate if NOT muted
+        if (!isMuted) {
+            // Random scale between 1 and 1.10
+            const scale = 1 + Math.random() * 0.10;
+            left.style.transform = `scaleY(${scale})`;
+            right.style.transform = `scaleY(${scale})`;
+        } else {
+            left.style.transform = '';
+            right.style.transform = '';
+        }
+        speakerAnimationId = requestAnimationFrame(animate);
+    }
+    animate();
+}
+function stopSpeakerAnimation() {
+    if (speakerAnimationId) {
+        cancelAnimationFrame(speakerAnimationId);
+        speakerAnimationId = null;
+    }
+    const left = document.querySelector('.speaker-left');
+    const right = document.querySelector('.speaker-right');
+    if (left && right) {
+        left.style.transform = '';
+        right.style.transform = '';
+    }
+}
+function setupSpeakerAnimationEvents() {
+    if (!videoElement) return;
+    videoElement.addEventListener('play', startSpeakerAnimation);
+    videoElement.addEventListener('pause', stopSpeakerAnimation);
+    videoElement.addEventListener('ended', stopSpeakerAnimation);
+}
+
+// Patch into loadChannel and toggleMute
+const origLoadChannel = loadChannel;
+loadChannel = function(channelIndex) {
+    origLoadChannel(channelIndex);
+    setupSpeakerAnimationEvents();
+    setKnobGlow();
+    if (!isMuted) {
+        startSpeakerAnimation();
+    } else {
+        stopSpeakerAnimation();
+    }
+};
+const origToggleMute = toggleMute;
+toggleMute = function() {
+    origToggleMute();
+    setKnobGlow();
+    if (!isMuted) {
+        startSpeakerAnimation();
+    } else {
+        stopSpeakerAnimation();
+    }
+};
 
 // Event listeners
 function setupEventListeners() {
