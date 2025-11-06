@@ -1,6 +1,8 @@
-# Kafka TV - Complete Setup Guide
+# Kafka TV Project
 
 ## 🎭 Kafka-esque Design Philosophy
+
+View the live demo: [Kafka TV Demo](https://alexj.io/kafka)
 
 The design embodies Franz Kafka's themes:
 
@@ -8,9 +10,7 @@ The design embodies Franz Kafka's themes:
 **Alienation** → Dark, oppressive colors
 **The Absurd** → Modern TV + historical imagery
 **Authority** → Heavy, imposing design
-**History's Weight** → Pre-industrial Germany imagery
 **Oppression** → Vignetting, dark overlays
-**The Trial** → Literal watermark reference
 
 ## 📁 File Structure
 
@@ -22,6 +22,7 @@ The design embodies Franz Kafka's themes:
 ├── IMPLEMENTATION.md   (Documentation)
 ├── /vids/
     ├── rick-astley.mp4
+    ├── messi-glaze.mp4
     └── la-cucaracha.mp4
 ```
 

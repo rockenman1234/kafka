@@ -35,6 +35,10 @@
         /* Directly under the volume knob; adds the mobile-only offset value to raise it */
         bottom: calc(18vw + 60px + var(--unmute-offset, 40px));
         position: fixed !important;
+        animation: tooltipFloat 2s ease-in-out infinite !important;
+    }
+    .unmute-tooltip.show {
+        transform: translateX(-50%) !important;
     }
     .unmute-tooltip .tooltip-arrow {
         border-bottom: 18px solid #ffffff;
@@ -66,13 +70,14 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     background: 
         linear-gradient(135deg, #2a2520 0%, #1a1510 50%, #2a2520 100%);
     background-size: cover;
     background-position: center;
     font-family: 'Courier New', monospace;
-    padding: 20px;
+    padding: 0;
     position: relative;
 }
 
@@ -124,6 +129,8 @@ body::after {
     max-width: 800px;
     aspect-ratio: 4/3;
     height: auto;
+    margin-top: 60px;
+    margin-bottom: 10px;
     background: 
         repeating-linear-gradient(
             90deg,
@@ -1069,7 +1076,7 @@ video {
         transform: translateY(0);
     }
     50% {
-        transform: translateY(-8px);
+        transform: translateY(-5px);
     }
 }
 
