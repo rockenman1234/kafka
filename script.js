@@ -419,9 +419,29 @@ function stopSpeakerAnimation() {
 }
 function setupSpeakerAnimationEvents() {
     if (!videoElement) return;
-    videoElement.addEventListener('play', startSpeakerAnimation);
-    videoElement.addEventListener('pause', stopSpeakerAnimation);
-    videoElement.addEventListener('ended', stopSpeakerAnimation);
+    
+    // Remove old listeners first to prevent duplicates
+    videoElement.removeEventListener('play', handleVideoPlay);
+    videoElement.removeEventListener('pause', handleVideoPause);
+    videoElement.removeEventListener('ended', handleVideoPause);
+    
+    // Add new listeners
+    videoElement.addEventListener('play', handleVideoPlay);
+    videoElement.addEventListener('pause', handleVideoPause);
+    videoElement.addEventListener('ended', handleVideoPause);
+}
+
+// Event handlers for speaker animation
+function handleVideoPlay() {
+    if (!isMuted) {
+        startSpeakerAnimation();
+    }
+}
+
+function handleVideoPause() {
+    if (isMuted) {
+        stopSpeakerAnimation();
+    }
 }
 
 // Patch into loadChannel and toggleMute
@@ -430,6 +450,7 @@ loadChannel = function(channelIndex) {
     origLoadChannel(channelIndex);
     setupSpeakerAnimationEvents();
     setKnobGlow();
+    // Start animation if sound is enabled, regardless of play state
     if (!isMuted) {
         startSpeakerAnimation();
     } else {
@@ -440,6 +461,7 @@ const origToggleMute = toggleMute;
 toggleMute = function() {
     origToggleMute();
     setKnobGlow();
+    // Start or stop animation based on mute state
     if (!isMuted) {
         startSpeakerAnimation();
     } else {
