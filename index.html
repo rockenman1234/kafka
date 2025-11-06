@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kafka TV</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📺</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="tv-container">
+        <div class="antenna"></div>
+        <div class="tv-brand">KAKFA TV</div>
+        <button class="info-button" id="infoButton" title="Information">ℹ</button>
+        
+        <div class="screen-container">
+            <div class="video-frame" id="videoFrame"></div>
+            <div class="crt-beam"></div>
+            <div class="crt-effects"></div>
+            <div class="screen-overlay"></div>
+            <div class="screen-glare"></div>
+            <canvas class="static-noise" id="staticNoise"></canvas>
+            <div class="channel-display" id="channelDisplay">CH 1</div>
+            <div class="volume-indicator" id="volumeIndicator">MUTE</div>
+        </div>
+
+        <div class="speaker-grill speaker-left"></div>
+        <div class="speaker-grill speaker-right"></div>
+        
+        <div class="controls-panel">
+            <div class="control-group">
+                <div class="control-label">Channel</div>
+                <div class="button-group">
+                    <div class="button" id="channelDown" title="Channel Down">◄</div>
+                    <div class="button" id="channelUp" title="Channel Up">►</div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">Volume</div>
+                <div class="knob" id="volumeKnob" title="Click to toggle mute"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unmute Tooltip -->
+    <div class="unmute-tooltip" id="unmuteTooltip">
+        <div class="tooltip-arrow"></div>
+        <div class="tooltip-text">Click to unmute</div>
+    </div>
+
+    <!-- Info Popup Modal -->
+    <div class="info-modal" id="infoModal">
+        <div class="info-modal-content">
+            <button class="info-close" id="closeModal">&times;</button>
+            <h2>KAFKA TV</h2>
+            <p><strong>Licensed under the GPLv3</strong></p>
+            <p>Created for <strong>ML-2500</strong><br>
+            Intro to Cross Cultural Studies<br>
+            at the <a href="https://gatech.edu" target="_blank" rel="noopener noreferrer">Georgia Institute of Technology</a></p>
+            <p>Overseeing Professor: <strong><a href="https://modlangs.gatech.edu/people/person/annika-orich" target="_blank" rel="noopener noreferrer">Dr. Annika Orich</a></strong></p>
+            <div class="info-footer">
+                <p>© 2025 - <a href="https://alexj.io" target="_blank" rel="noopener noreferrer">Kenneth Jenkins</a>, Lily Vastine, Maryam Kassem, Ansh Chhabra, & Austin Westbrook</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
