@@ -327,15 +327,20 @@ function toggleMute() {
     isMuted = !isMuted;
     if (videoElement) {
         videoElement.muted = isMuted;
-        
-        // Resume audio context if unmuting (browser requirement)
-        if (!isMuted && audioContext && audioContext.state === 'suspended') {
-            audioContext.resume();
-        }
-        
-        // Setup audio analyzer when unmuting for the first time
-        if (!isMuted && !analyser) {
-            setupAudioAnalyzer();
+        // On unmute, create or resume AudioContext only after user gesture
+        if (!isMuted) {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('Web Audio API not supported:', e);
+                }
+            } else if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            if (!analyser) {
+                setupAudioAnalyzer();
+            }
         }
     }
     showVolumeIndicator();
