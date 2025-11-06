@@ -3,7 +3,7 @@
         width: 100vw;
         max-width: 100vw;
         aspect-ratio: 4/3;
-        padding: 10vw 2vw 18vw 2vw;
+        padding: 10vw 8vw 18vw 8vw; /* Increased horizontal padding for buffer */
         border-radius: 4vw;
         height: auto;
         margin-bottom: 70px; /* Lower the TV frame further */
@@ -11,9 +11,21 @@
         /* Mobile-only helper variable: positive value moves the unmute tooltip up
            (we add this to existing bottom calculations) */
         --unmute-offset: 40px;
+        /* ADJUST THIS VALUE: Distance from bottom of screen to top of "CHANNEL"/"VOLUME" labels (10px = 10px above labels) */
+        --screen-bottom-clearance: 5px;
         /* Move the whole TV container down by ~20px on mobile only */
         transform: translateY(20px);
     }
+    
+    /* Ensure screen container is properly centered with margins from speakers */
+    .screen-container {
+        position: relative;
+        margin: 0 auto;
+        width: calc(100% - 15vw) !important; /* Reduce width more to create proper buffer */
+        max-height: calc(100% - var(--screen-bottom-clearance)) !important; /* Use variable for easy adjustment */
+        aspect-ratio: 4/3;
+    }
+    
     .tv-brand {
         top: 20px !important;
         left: 50%;
@@ -274,13 +286,15 @@ body::before {
         width: 100vw;
         max-width: 100vw;
         aspect-ratio: 4/3;
-        padding: 10vw 2vw 18vw 2vw;
+        padding: 10vw 8vw 18vw 8vw; /* Increased horizontal padding for buffer */
         border-radius: 4vw;
         height: auto;
         margin-top: 20px;
         /* ensure the same mobile offset variable is available in the 600px media query
            and keep the TV moved down on smaller screens too */
         --unmute-offset: 40px;
+        /* ADJUST THIS VALUE: Distance from bottom of screen to top of "CHANNEL"/"VOLUME" labels (10px = 10px above labels) */
+        --screen-bottom-clearance: 95px;
         transform: translateY(20px);
     }
     /* Move the floating tooltip under the dial */
@@ -295,11 +309,12 @@ body::before {
         z-index: 1001;
     }
     .screen-container {
-        width: 100%;
+        width: calc(100% - 20vw) !important; /* Reduce width more to create proper buffer */
         aspect-ratio: 4/3;
-        max-height: 60vw;
+        max-height: calc(100% - var(--screen-bottom-clearance)) !important; /* Use variable for easy adjustment */
         height: auto;
         border-radius: 2vw;
+        margin: 0 auto; /* Center the screen */
     }
     .video-frame {
         width: 100%;
@@ -532,12 +547,12 @@ body::before {
 }
 
 .video-frame {
-    width: calc(100% + 16px);
-    height: calc(100% + 16px);
+    width: 100%;
+    height: 100%;
     aspect-ratio: 4/3;
     position: absolute;
-    top: -8px;
-    left: -8px;
+    top: 0;
+    left: 0;
     z-index: 2;
     background: transparent; /* Ensure background is transparent so GIF shows through */
 }
