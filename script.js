@@ -151,6 +151,23 @@ function stopStaticNoise() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
+    // iOS Safari viewport fix: set --vh to actual innerHeight
+    function setVhUnit() {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    setVhUnit();
+    window.addEventListener('resize', setVhUnit);
+    window.addEventListener('orientationchange', () => setTimeout(setVhUnit, 100));
+
+    // Detect iOS Safari to tweak some transforms/z-index behavior
+    const ua = window.navigator.userAgent;
+    const isIOS = /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+    if (isIOS && isSafari) {
+        document.documentElement.classList.add('ios-safari');
+    }
+
     // Create static noise audio buffer
     staticAudio = createStaticNoise();
     
@@ -606,10 +623,41 @@ function positionUnmuteTooltip() {
     if (!volumeKnob || !tooltip) return;
     
     const knobRect = volumeKnob.getBoundingClientRect();
+    const knobCenterY = knobRect.top + (knobRect.height / 2);
+    const isMobile = window.innerWidth <= 700;
     
-    // Position tooltip to the right of the volume knob
-    tooltip.style.left = `${knobRect.right + 20}px`;
-    tooltip.style.top = `${knobRect.top + (knobRect.height / 2) - (tooltip.offsetHeight / 2)}px`;
+    // Remove any existing arrow direction classes
+    tooltip.classList.remove('arrow-up', 'arrow-down', 'arrow-right');
+    
+    if (isMobile) {
+        // On mobile, use dynamic positioning based on where tooltip ends up
+        // Get tooltip's computed position to determine where it actually is
+        tooltip.style.left = `${knobRect.left + (knobRect.width / 2)}px`;
+        tooltip.style.top = `${knobRect.bottom + 15}px`;
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const tooltipCenterY = tooltipRect.top + (tooltipRect.height / 2);
+        
+        // Check if tooltip is positioned above or below the knob center
+        if (tooltipCenterY < knobCenterY) {
+            // Tooltip is above the knob, arrow should point down
+            tooltip.classList.add('arrow-down');
+            tooltip.style.left = `${knobRect.left + (knobRect.width / 2)}px`;
+            tooltip.style.top = `${knobRect.top - tooltip.offsetHeight - 15}px`;
+            tooltip.style.transform = 'translateX(-50%)';
+        } else {
+            // Tooltip is below the knob, arrow should point up
+            tooltip.classList.add('arrow-up');
+            tooltip.style.left = `${knobRect.left + (knobRect.width / 2)}px`;
+            tooltip.style.top = `${knobRect.bottom + 15}px`;
+            tooltip.style.transform = 'translateX(-50%)';
+        }
+    } else {
+        // On desktop, default to right side with arrow pointing left
+        tooltip.classList.add('arrow-right');
+        tooltip.style.left = `${knobRect.right + 20}px`;
+        tooltip.style.top = `${knobRect.top + (knobRect.height / 2) - (tooltip.offsetHeight / 2)}px`;
+        tooltip.style.transform = 'translateX(0)';
+    }
 }
 
 function showUnmuteTooltip() {
