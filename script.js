@@ -10,9 +10,31 @@ const videoFiles = [
     },
     {
         webm: GITHUB_RAW_BASE + 'messi-glaze.webm'
-    }
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'die-woodys.webm'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'murica.webm'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'kafka-edit.webm'
+    },
     // Add more video file objects as needed
 ];
+
+// Shuffle array using Fisher-Yates algorithm
+function shuffleArray(array) {
+    const shuffled = [...array]; // Create a copy
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
+// Randomize the channel order
+const shuffledVideoFiles = shuffleArray(videoFiles);
 
 let currentChannel = 0;
 let isMuted = true; // Start muted by default
@@ -216,7 +238,7 @@ function loadChannel(channelIndex) {
 
     // Add <source> element for webm only
     const webmSource = document.createElement('source');
-    webmSource.src = videoFiles[channelIndex].webm;
+    webmSource.src = shuffledVideoFiles[channelIndex].webm;
     webmSource.type = 'video/webm';
     videoElement.appendChild(webmSource);
 
@@ -247,6 +269,26 @@ function loadChannel(channelIndex) {
 
     // Update channel display
     channelDisplay.textContent = `CH ${channelIndex + 1}`;
+    
+    // Handle video loading errors - skip to next channel
+    videoElement.addEventListener('error', (e) => {
+        console.log(`Video error on channel ${channelIndex + 1}, skipping to next...`, e);
+        // Move to next channel automatically
+        setTimeout(() => {
+            currentChannel = channelIndex + 1;
+            if (currentChannel >= shuffledVideoFiles.length) {
+                currentChannel = 0;
+            }
+            loadChannel(currentChannel);
+        }, 500);
+    }, { once: true });
+    
+    // Also handle source errors
+    webmSource.addEventListener('error', (e) => {
+        console.log(`Source error on channel ${channelIndex + 1}, skipping to next...`, e);
+        // Trigger the video element error handler
+        videoElement.dispatchEvent(new Event('error'));
+    }, { once: true });
     
     // Hide static only after video is ready to play
     videoElement.addEventListener('canplay', () => {
@@ -280,10 +322,10 @@ function changeChannel(direction) {
     // Wait 0.5 seconds of static before changing channel
     setTimeout(() => {
         currentChannel += direction;
-        if (currentChannel >= videoFiles.length) {
+        if (currentChannel >= shuffledVideoFiles.length) {
             currentChannel = 0;
         } else if (currentChannel < 0) {
-            currentChannel = videoFiles.length - 1;
+            currentChannel = shuffledVideoFiles.length - 1;
         }
         loadChannel(currentChannel);
         // (Static will be hidden by video canplay event)
