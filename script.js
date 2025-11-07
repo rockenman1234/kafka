@@ -48,6 +48,10 @@ let analyser = null;
 let audioSource = null;
 let animationFrameId = null;
 let infoButtonClicks = 0; // Track info button clicks for easter egg
+let wakeLock = null; // Screen Wake Lock
+let keepAliveInterval = null; // Interval to keep video playing on iOS
+let noSleepVideo = null; // Hidden video for iOS wake lock workaround
+let noSleepEnabled = false;
 
 // Mouse tracking for dynamic background shading
 let mouseX = window.innerWidth / 2;
@@ -170,6 +174,173 @@ function stopStaticNoise() {
     }
 }
 
+// Screen Wake Lock functions
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            // Release any existing wake lock first
+            if (wakeLock !== null) {
+                await releaseWakeLock();
+            }
+            
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Screen Wake Lock activated');
+            
+            // Handle wake lock release (e.g., when tab becomes inactive)
+            wakeLock.addEventListener('release', () => {
+                console.log('Screen Wake Lock released');
+                wakeLock = null;
+            });
+        } else {
+            console.log('Wake Lock API not supported - relying on video playback');
+        }
+    } catch (err) {
+        console.log(`Wake Lock error: ${err.name}, ${err.message}`);
+        // On iOS, video playback with audio should keep screen awake
+        console.log('Falling back to video playback to keep screen awake');
+    }
+}
+
+async function releaseWakeLock() {
+    if (wakeLock !== null) {
+        try {
+            await wakeLock.release();
+            wakeLock = null;
+            console.log('Screen Wake Lock manually released');
+        } catch (err) {
+            console.log(`Wake Lock release error: ${err.name}, ${err.message}`);
+        }
+    }
+}
+
+// Re-acquire wake lock when page becomes visible again
+document.addEventListener('visibilitychange', async () => {
+    if (!document.hidden && !isMuted) {
+        await requestWakeLock();
+        // Also ensure video is playing on iOS
+        if (videoElement && videoElement.paused) {
+            try {
+                await videoElement.play();
+            } catch (err) {
+                console.log('Could not resume video:', err);
+            }
+        }
+    }
+});
+
+// NoSleep.js style implementation for iOS
+// Creates a hidden video that plays continuously to prevent screen sleep
+function createNoSleepVideo() {
+    if (noSleepVideo) return; // Already created
+    
+    noSleepVideo = document.createElement('video');
+    noSleepVideo.setAttribute('title', 'No Sleep');
+    noSleepVideo.setAttribute('playsinline', '');
+    noSleepVideo.setAttribute('loop', '');
+    noSleepVideo.setAttribute('muted', '');
+    
+    // Set styles to hide it completely
+    noSleepVideo.style.position = 'fixed';
+    noSleepVideo.style.top = '-1px';
+    noSleepVideo.style.left = '-1px';
+    noSleepVideo.style.width = '1px';
+    noSleepVideo.style.height = '1px';
+    noSleepVideo.style.opacity = '0.01';
+    noSleepVideo.style.pointerEvents = 'none';
+    noSleepVideo.style.zIndex = '-1000';
+    
+    // Create a minimal WebM video (1 frame, transparent)
+    // This is a base64-encoded 1-second transparent WebM video
+    const webmSource = document.createElement('source');
+    webmSource.src = 'data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwEAAAAAAAHTEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHGTbuMU6uEElTDZ1OsggEXTbuMU6uEHFO7a1OsggG97AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmoCrXsYMPQkBNgIRMYXZmV0GETGF2ZkSJiEBEAAAAAAAAFlSua8yuAQAAAAAAAEPXgQFzxYgAAAAAAAAAAZyBACK1nIN1bmSIgQCGhVZfVlA5g4EBI+ODhAJiWgDglLCBArqBApqBAlPAgQFVsIRVuYEBElTDZ9Vzc9JjwItjxYgAAAAAAAAAAWfInEWjh0VOQ09ERVJEh49MYXZjNTguMTguMTAwV0GHh0VOQ09ERVJEh49MYXZjNTguMTguMTAwc6SQ20Yv/Elws73A/+KfEjM11ESJiEBEAAAAAAAAFlSua8yuAQAAAAAAAD/rgQAfQ7Z1AQAAAAAAALHngQCgAQAAAAAAAFyho4+BAAAAAAAAFlSua8yuAQAAAAAAAEPXgQFzxYgAAAAAAAAAAZyBACK1nIN1bmSIgQCGhVZfVlA5g4EBI+ODhAJiWgDglLCBArqBApqBAlPAgQFVsIRVuYEBElTDZ9Vzc9JjwItjxYgAAAAAAAAAAWfInEWjh0VOQ09ERVJEh49MYXZjNTguMTguMTAwV0GHh0VOQ09ERVJEh49MYXZjNTguMTguMTAwc6SQ20Yv/Elws73A/+KfEjM11ESJiEBEAAAAAAAAFlSua8yuAQAAAAAAAD/rgQAfQ7Z1AQAAAAAAALHngQCgAQAAAAAAAFyho4+BAAAAAAAAFlSua8yuAQAAAAAAAEPXgQFzxYgAAAAAAAAAAZyBACK1nIN1bmSIgQCGhVZfVlA5g4EBI+ODhAJiWgDglLCBArqBApqBAlPAgQFVsIRVuYEBElTDZ9Vzc9JjwItjxYgAAAAAAAAAAWfInEWjh0VOQ09ERVJEh49MYXZjNTguMTguMTAwV0GHh0VOQ09ERVJEh49MYXZjNTguMTguMTAwc6SQ20Yv/Elws73A/+KfEjM11ESJiEBEAAAAAAAAFlSua8yuAQAAAAAAAD/rgQAfQ7Z1AQAAAAAAALHngQCgAQAAAAAAAFyho4+BAAAAAAAAFlSua8yuAQAAAAAAAEPXgQFzxYgAAAAAAAAAAZyBACK1nIN1bmSIgQCGhVZfVlA5g4EBI+ODhAJiWgDglLCBArqBApqBAlPAgQFVsIRVuYEBElTDZ9Vzc9JjwItjxYgAAAAAAAAAAWfInEWjh0VOQ09ERVJEh49MYXZjNTguMTguMTAwV0GHh0VOQ09ERVJEh49MYXZjNTguMTguMTAwc6SQ20Yv/Elws73A/+KfEjM11A==';
+    webmSource.type = 'video/webm';
+    
+    noSleepVideo.appendChild(webmSource);
+    
+    // Add MP4 fallback for older iOS versions
+    const mp4Source = document.createElement('source');
+    mp4Source.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAACKBtZGF0AAAC rgYF//+q3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE0MiByMjQ3OSBkZDc5YTYxIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAxNCAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTI1IHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAAD2WIhAAz//728P4FNjuY0JcRzeidMx+/Fbi6NDe9zgAAAwADAAA7EAL6AAADABTj5k1Exq7wAAAPeYEYLkA=';
+    mp4Source.type = 'video/mp4';
+    
+    noSleepVideo.appendChild(mp4Source);
+    
+    document.body.appendChild(noSleepVideo);
+    
+    console.log('NoSleep video element created');
+}
+
+// Enable NoSleep video playback
+async function enableNoSleep() {
+    if (noSleepEnabled) return;
+    
+    createNoSleepVideo();
+    
+    try {
+        await noSleepVideo.play();
+        noSleepEnabled = true;
+        console.log('NoSleep video playing - screen should stay awake');
+    } catch (err) {
+        console.log('NoSleep video play error:', err);
+        noSleepEnabled = false;
+    }
+}
+
+// Disable NoSleep video playback
+function disableNoSleep() {
+    if (!noSleepEnabled || !noSleepVideo) return;
+    
+    try {
+        noSleepVideo.pause();
+        noSleepEnabled = false;
+        console.log('NoSleep video paused');
+    } catch (err) {
+        console.log('NoSleep video pause error:', err);
+    }
+}
+
+// Keep-alive mechanism for iOS Safari
+// Ensures video playback continues to prevent screen sleep
+function startKeepAlive() {
+    stopKeepAlive(); // Clear any existing interval
+    
+    // Enable the NoSleep hidden video for iOS
+    enableNoSleep();
+    
+    // Check every 5 seconds that both videos are still playing when unmuted
+    keepAliveInterval = setInterval(() => {
+        if (!isMuted) {
+            // Check main video
+            if (videoElement && videoElement.paused) {
+                console.log('Main video paused unexpectedly, restarting...');
+                videoElement.play().catch(err => {
+                    console.log('Could not restart main video:', err);
+                });
+            }
+            
+            // Check NoSleep video
+            if (noSleepVideo && noSleepVideo.paused) {
+                console.log('NoSleep video paused, restarting...');
+                noSleepVideo.play().catch(err => {
+                    console.log('Could not restart NoSleep video:', err);
+                });
+            }
+        }
+    }, 5000);
+    
+    console.log('Keep-alive mechanism started');
+}
+
+function stopKeepAlive() {
+    if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        keepAliveInterval = null;
+        console.log('Keep-alive mechanism stopped');
+    }
+    
+    // Disable the NoSleep hidden video
+    disableNoSleep();
+}
+
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -235,6 +406,7 @@ function loadChannel(channelIndex) {
     videoElement.playsInline = true;
     videoElement.muted = isMuted;
     videoElement.volume = volumeLevel / 100;
+    videoElement.preload = 'auto'; // Ensure video is fully loaded
 
     // Add <source> element for webm only
     const webmSource = document.createElement('source');
@@ -339,6 +511,15 @@ function toggleMute() {
     }
     setKnobGlow();
     showVolumeIndicator();
+    
+    // Manage wake lock and keep-alive based on mute state
+    if (!isMuted) {
+        requestWakeLock();
+        startKeepAlive();
+    } else {
+        releaseWakeLock();
+        stopKeepAlive();
+    }
 }
 
 function adjustVolume(delta) {
@@ -348,6 +529,9 @@ function adjustVolume(delta) {
         if (isMuted && volumeLevel > 0) {
             isMuted = false;
             videoElement.muted = false;
+            // Request wake lock and start keep-alive when unmuting via volume adjustment
+            requestWakeLock();
+            startKeepAlive();
         }
     }
     showVolumeIndicator();
@@ -520,11 +704,13 @@ const origToggleMute = toggleMute;
 toggleMute = function() {
     origToggleMute();
     setKnobGlow();
-    // Start or stop animation based on mute state
+    // Start or stop animation and keep-alive based on mute state
     if (!isMuted) {
         startSpeakerAnimation();
+        startKeepAlive();
     } else {
         stopSpeakerAnimation();
+        stopKeepAlive();
     }
 };
 
@@ -613,6 +799,9 @@ function setupEventListeners() {
                 if (isMuted && volumeLevel > 0) {
                     isMuted = false;
                     videoElement.muted = false;
+                    // Request wake lock and start keep-alive when unmuting via drag
+                    requestWakeLock();
+                    startKeepAlive();
                 }
             }
             showVolumeIndicator();
