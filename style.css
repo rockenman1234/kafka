@@ -829,29 +829,37 @@ iframe {
 .speaker-grill {
     position: absolute;
     bottom: 25px;
-    width: 120px;
-    height: 60px;
-    background: 
-        repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 3px,
-            rgba(0, 0, 0, 0.3) 3px,
-            rgba(0, 0, 0, 0.3) 4px
-        ),
-        radial-gradient(circle, #2a2a2a, #1a1a1a);
-    border-radius: 8px;
-    border: 2px solid #0a0a0a;
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
-    transition: transform 0.05s ease-out, box-shadow 0.05s ease-out;
+    width: 51px; /* 80% of 64px (which was already 80%) = 51.2px */
+    height: 85px; /* 80% of 106px (which was already 80%) = 84.8px */
+    transition: transform 0.05s ease-out, filter 0.05s ease-out;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.8));
 }
 
 .speaker-left {
     left: 30px;
+    transform: scaleX(-1); /* Flip horizontally to face left */
 }
 
 .speaker-right {
     right: 30px;
+    /* No flip needed - faces right by default */
+}
+
+/* Animate the woofer cones when audio is playing */
+.speaker-grill .speaker-woofer {
+    transform-origin: center;
+    transition: transform 0.05s ease-out;
+}
+
+.speaker-grill .speaker-tweeter,
+.speaker-grill .speaker-tweeter-bottom {
+    transform-origin: center;
+    transition: transform 0.05s ease-out;
+}
+
+/* Add subtle inner shadow to speaker housing for depth */
+.speaker-grill rect {
+    filter: drop-shadow(inset 0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
 .speaker-grill.pulsing {
@@ -865,6 +873,27 @@ iframe {
     50% {
         transform: scale(1.02);
     }
+}
+
+.speaker-left {
+    left: 30px;
+}
+
+.speaker-right {
+    right: 30px;
+}
+
+/* Woofer cone animation when audio is playing */
+.speaker-grill .speaker-woofer {
+    transform-origin: center;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tweeter animation when audio is playing */
+.speaker-grill .speaker-tweeter,
+.speaker-grill .speaker-tweeter-bottom {
+    transform-origin: center;
+    transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (max-width: 900px) {
@@ -945,8 +974,8 @@ iframe {
     }
 
     .speaker-grill {
-        width: 80px;
-        height: 45px;
+        width: 51px; /* 80% of previous size */
+        height: 85px; /* 80% of previous size */
         bottom: 20px;
     }
 
@@ -999,8 +1028,8 @@ iframe {
     }
 
     .speaker-grill {
-        width: 60px;
-        height: 35px;
+        width: 38px; /* 80% of 48px */
+        height: 64px; /* 80% of 80px, maintains aspect ratio */
     }
 
     .channel-display,
@@ -1227,5 +1256,69 @@ video {
     pointer-events: none;
     /* subtle inner stroke */
     box-shadow: inset 0 0 0 1px rgba(200,200,200,0.06);
+}
+
+/* =============================
+     iOS Mobile Specific Screen Sizing
+     Goal: Keep the video "picture" centered on the vertical axis (blue line)
+     and bounded between the two visual red guideline areas (just below the
+     logo/info button and just above the CHANNEL / VOLUME controls).
+     We achieve this by absolutely positioning the `.screen-container` inside
+     the TV frame with explicit top & bottom offsets and letting the aspect-ratio
+     property compute the width from the constrained height. This avoids Safari
+     viewport quirks and prevents the video from drifting vertically.
+     ============================= */
+@media (max-width: 700px) {
+    .ios-safari .tv-container {
+        /* Tunable offsets: adjust these if the red guideline positions change */
+        --screen-top-bound: 95px;      /* slightly lower to avoid clipping */
+        --screen-bottom-bound: 170px;  /* slightly higher to keep above controls */
+        /* Ensure enough bottom padding so absolutely positioned screen does not overlap controls */
+        padding-bottom: calc(var(--screen-bottom-bound) + 70px); /* preserve existing styling + clearance */
+    }
+
+    .ios-safari .screen-container {
+        position: absolute !important;
+        /* Bounded between red guideline equivalents */
+        top: var(--screen-top-bound) !important;
+        bottom: var(--screen-bottom-bound) !important;
+            left: 50% !important;
+            /* Override earlier iOS transform:none with higher-specificity rule below */
+            transform: translateX(-50%) !important;
+        /* Allow height to be dictated by top/bottom; aspect-ratio will set width */
+        width: calc(100% - 100px) !important; /* widen ~40px total to grow picture */
+        height: auto !important; /* let bottom/top drive height */
+        aspect-ratio: 4 / 3;
+        /* Provide horizontal breathing room so edges don't touch speaker areas */
+            /* Remove previous constraints; width already set */
+            max-width: none !important;
+            max-height: none !important;
+    }
+
+        /* Equal-or-greater specificity override to beat earlier `.ios-safari .tv-container .screen-container { transform:none }` */
+        .ios-safari .tv-container .screen-container {
+            transform: translateX(-50%) !important;
+        }
+
+    /* Ensure the video frame fills the adjusted screen container exactly */
+    .ios-safari .video-frame,
+    .ios-safari .video-frame video {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover;
+    }
+}
+
+/* Slight refinement for very narrow devices (<500px) to keep proportion sane */
+@media (max-width: 500px) {
+    .ios-safari .tv-container {
+        --screen-top-bound: 55px;
+        --screen-bottom-bound: 110px;
+        padding-bottom: calc(var(--screen-bottom-bound) + 65px);
+    }
+    .ios-safari .screen-container {
+        width: calc(100% - 90px) !important;
+        max-width: none;
+    }
 }
 

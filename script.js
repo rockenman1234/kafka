@@ -46,6 +46,8 @@ let currentChannel = 0;
 let isMuted = true; // Start muted by default
 let volumeLevel = 50;
 let videoElement = null;
+// Track whether we are in the middle of a channel change so we don't force-loop a video that's being replaced
+let channelChanging = false;
 let volumeTimeout = null;
 let backgroundInterval = null;
 let staticAudio = null;
@@ -54,10 +56,39 @@ let analyser = null;
 let audioSource = null;
 let animationFrameId = null;
 let infoButtonClicks = 0; // Track info button clicks for easter egg
-let wakeLock = null; // Screen Wake Lock
-let keepAliveInterval = null; // Interval to keep video playing on iOS
-let noSleepVideo = null; // Hidden video for iOS wake lock workaround
+let wakeLock = null; // Screen Wake Lock API sentinel
+let keepAliveInterval = null; // Interval to keep video playing as fallback
+let noSleepVideo = null; // Hidden video for older iOS versions (pre-16.4) workaround
 let noSleepEnabled = false;
+let wakeLockSupported = false; // Track if Wake Lock API is available
+
+// Detect iOS for platform-specific handling (modern approach without deprecated platform property)
+const isIOS = (() => {
+    const ua = navigator.userAgent;
+    // Check for iPhone, iPad, iPod in user agent
+    if (/iPad|iPhone|iPod/.test(ua)) return true;
+    // Check for iPad Pro in iPadOS 13+ which identifies as Mac
+    // Use maxTouchPoints to detect touch-capable devices
+    if (ua.includes('Mac') && navigator.maxTouchPoints > 1) return true;
+    return false;
+})();
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+// Log device info for debugging
+console.log('Device info:', {
+    isIOS,
+    isSafari,
+    wakeLockAvailable: 'wakeLock' in navigator,
+    maxTouchPoints: navigator.maxTouchPoints,
+    userAgent: navigator.userAgent
+});
+
+// iOS-specific warning message
+if (isIOS) {
+    console.log('%c⚠ iOS DETECTED', 'background: #ff9500; color: white; font-size: 14px; padding: 4px 8px; border-radius: 4px;');
+    console.log('%cIMPORTANT: Audio MUST remain unmuted and playing to keep screen awake on iOS!', 'color: #ff9500; font-weight: bold;');
+    console.log('%cThe app will aggressively monitor and maintain audio playback.', 'color: #666;');
+}
 
 // Mouse tracking for dynamic background shading
 let mouseX = window.innerWidth / 2;
@@ -180,72 +211,142 @@ function stopStaticNoise() {
     }
 }
 
-// Screen Wake Lock functions
+// Screen Wake Lock functions - Cross-browser compatible with iOS Safari 16.4+
+// CRITICAL for iOS: Audio MUST be unmuted and playing for screen to stay awake
 async function requestWakeLock() {
+    // Only request wake lock if audio is playing (unmuted)
+    if (isMuted) {
+        console.log('Cannot request wake lock while muted - audio must be playing for iOS');
+        return;
+    }
+    
+    // iOS CRITICAL: Ensure video element has audio playing and is unmuted
+    if (isIOS && videoElement) {
+        videoElement.muted = false;
+        videoElement.volume = Math.max(volumeLevel / 100, 0.01); // Minimum 1% volume
+        
+        // Force play if paused
+        if (videoElement.paused) {
+            try {
+                await videoElement.play();
+                console.log('iOS: Video playback resumed with audio');
+            } catch (err) {
+                console.log('iOS: Could not start video playback:', err);
+            }
+        }
+    }
+    
     try {
+        // Check if Wake Lock API is supported (Safari 16.4+, Chrome, Firefox)
         if ('wakeLock' in navigator) {
-            // Release any existing wake lock first
-            if (wakeLock !== null) {
+            wakeLockSupported = true;
+            
+            // Release any existing wake lock first to avoid conflicts
+            if (wakeLock !== null && !wakeLock.released) {
                 await releaseWakeLock();
             }
             
+            // Request a new screen wake lock
             wakeLock = await navigator.wakeLock.request('screen');
-            console.log('Screen Wake Lock activated');
+            console.log('✓ Screen Wake Lock activated successfully');
             
-            // Handle wake lock release (e.g., when tab becomes inactive)
+            // Listen for wake lock release events
             wakeLock.addEventListener('release', () => {
-                console.log('Screen Wake Lock released');
+                console.log('⚠ Screen Wake Lock was released');
                 wakeLock = null;
+                
+                // iOS: Immediately try to re-acquire if still unmuted
+                if (!isMuted && isIOS) {
+                    console.log('iOS: Attempting to re-acquire wake lock...');
+                    setTimeout(() => requestWakeLock(), 100);
+                }
             });
         } else {
-            console.log('Wake Lock API not supported - relying on video playback');
+            console.log('Wake Lock API not supported - using audio playback fallback');
+            wakeLockSupported = false;
+            
+            // iOS FALLBACK: Continuous audio playback is REQUIRED
+            if (isIOS) {
+                console.log('⚠ iOS detected: Audio playback MUST remain active to prevent sleep');
+            }
         }
     } catch (err) {
-        console.log(`Wake Lock error: ${err.name}, ${err.message}`);
-        // On iOS, video playback with audio should keep screen awake
-        console.log('Falling back to video playback to keep screen awake');
+        // Handle errors gracefully (low battery, permission denied, etc.)
+        console.log(`✗ Wake Lock error: ${err.name}, ${err.message}`);
+        
+        // NotAllowedError: Permission denied or not allowed by system
+        // NotSupportedError: Wake Lock not supported
+        if (err.name === 'NotAllowedError') {
+            console.log('Wake Lock denied by system (possibly low battery or user settings)');
+        }
+        
+        // iOS CRITICAL: Fallback relies on continuous audio playback
+        if (isIOS) {
+            console.log('⚠ iOS: Relying on audio playback to keep screen awake - DO NOT MUTE');
+        }
+        
+        wakeLockSupported = false;
     }
 }
 
 async function releaseWakeLock() {
     if (wakeLock !== null) {
         try {
-            await wakeLock.release();
+            // Only release if not already released
+            if (!wakeLock.released) {
+                await wakeLock.release();
+                console.log('Screen Wake Lock manually released');
+            }
             wakeLock = null;
-            console.log('Screen Wake Lock manually released');
         } catch (err) {
             console.log(`Wake Lock release error: ${err.name}, ${err.message}`);
+            wakeLock = null;
         }
     }
 }
 
 // Re-acquire wake lock when page becomes visible again
+// This is crucial for iOS Safari when returning from background
 document.addEventListener('visibilitychange', async () => {
     if (!document.hidden && !isMuted) {
+        // Re-request wake lock when page becomes visible
         await requestWakeLock();
-        // Also ensure video is playing on iOS
+        
+        // Ensure video continues playing (important for iOS fallback)
         if (videoElement && videoElement.paused) {
             try {
                 await videoElement.play();
+                console.log('Video resumed after visibility change');
             } catch (err) {
                 console.log('Could not resume video:', err);
+            }
+        }
+        
+        // Ensure NoSleep video is playing if enabled
+        if (noSleepEnabled && noSleepVideo && noSleepVideo.paused) {
+            try {
+                await noSleepVideo.play();
+                console.log('NoSleep video resumed after visibility change');
+            } catch (err) {
+                console.log('Could not resume NoSleep video:', err);
             }
         }
     }
 });
 
-// NoSleep.js style implementation for iOS
+// NoSleep.js style implementation for older iOS versions (pre-16.4)
 // Creates a hidden video that plays continuously to prevent screen sleep
+// This serves as a fallback when Wake Lock API is not supported
 function createNoSleepVideo() {
     if (noSleepVideo) return; // Already created
     
     noSleepVideo = document.createElement('video');
     noSleepVideo.setAttribute('title', 'No Sleep');
-    noSleepVideo.setAttribute('playsinline', '');
+    noSleepVideo.setAttribute('playsinline', ''); // Critical for iOS
     noSleepVideo.setAttribute('loop', '');
-    noSleepVideo.setAttribute('muted', '');
+    noSleepVideo.setAttribute('muted', ''); // Muted so it doesn't interfere with main audio
     
-    // Set styles to hide it completely
+    // Set styles to hide it completely but keep it functional
     noSleepVideo.style.position = 'fixed';
     noSleepVideo.style.top = '-1px';
     noSleepVideo.style.left = '-1px';
@@ -272,22 +373,40 @@ function createNoSleepVideo() {
     
     document.body.appendChild(noSleepVideo);
     
-    console.log('NoSleep video element created');
+    console.log('NoSleep video element created for fallback');
 }
 
-// Enable NoSleep video playback
+// Enable NoSleep video playback (for older browsers without Wake Lock API)
 async function enableNoSleep() {
     if (noSleepEnabled) return;
+    
+    // iOS: ALWAYS use NoSleep as additional insurance, even with Wake Lock
+    // Other browsers: Only if Wake Lock not supported
+    if (wakeLockSupported && !isIOS) {
+        console.log('Wake Lock API available (non-iOS), skipping NoSleep video');
+        return;
+    }
     
     createNoSleepVideo();
     
     try {
         await noSleepVideo.play();
         noSleepEnabled = true;
-        console.log('NoSleep video playing - screen should stay awake');
+        
+        if (isIOS) {
+            console.log('✓ iOS: NoSleep video playing as additional wake lock insurance');
+        } else {
+            console.log('NoSleep video playing - screen should stay awake (fallback method)');
+        }
     } catch (err) {
         console.log('NoSleep video play error:', err);
         noSleepEnabled = false;
+        
+        if (isIOS) {
+            console.log('⚠ iOS: NoSleep failed, relying solely on main video with audio');
+        } else {
+            console.log('Relying on main video playback to keep screen awake');
+        }
     }
 }
 
@@ -304,36 +423,89 @@ function disableNoSleep() {
     }
 }
 
-// Keep-alive mechanism for iOS Safari
-// Ensures video playback continues to prevent screen sleep
+// Keep-alive mechanism - ensures continuous playback to prevent screen sleep
+// This works across all browsers and iOS versions as a universal fallback
+// CRITICAL FOR iOS: Audio must be playing continuously
 function startKeepAlive() {
     stopKeepAlive(); // Clear any existing interval
     
-    // Enable the NoSleep hidden video for iOS
+    // Enable the NoSleep hidden video fallback (only if Wake Lock not supported)
     enableNoSleep();
     
-    // Check every 5 seconds that both videos are still playing when unmuted
+    // iOS requires MORE aggressive monitoring (every 1 second instead of 3)
+    const checkInterval = isIOS ? 1000 : 3000;
+    
+    // Monitor video playback to ensure continuous playback
+    // This is CRITICAL for iOS where videos/audio can pause unexpectedly
     keepAliveInterval = setInterval(() => {
         if (!isMuted) {
-            // Check main video
-            if (videoElement && videoElement.paused) {
-                console.log('Main video paused unexpectedly, restarting...');
-                videoElement.play().catch(err => {
-                    console.log('Could not restart main video:', err);
-                });
+            // iOS CRITICAL: Check video element state more thoroughly
+            if (videoElement) {
+                // Check if video is actually playing (ignore 'ended' state as loop handles it)
+                const isPlaying = !videoElement.paused && videoElement.currentTime > 0;
+                
+                // Only intervene if video is truly paused (not just at 'ended' state for looping)
+                if (!isPlaying && !videoElement.ended) {
+                    console.log('⚠ Main video paused unexpectedly, restarting...');
+                    videoElement.muted = false; // iOS: Ensure unmuted
+                    videoElement.volume = Math.max(volumeLevel / 100, 0.01); // Minimum volume
+                    videoElement.play().catch(err => {
+                        console.log('✗ Could not restart main video:', err);
+                    });
+                }
+                
+                // If video is ended and paused (loop might have failed), restart it
+                if (videoElement.ended && videoElement.paused) {
+                    console.log('⚠ Video ended and paused (loop failed), restarting...');
+                    videoElement.currentTime = 0;
+                    videoElement.play().catch(err => {
+                        console.log('✗ Could not restart ended video:', err);
+                    });
+                }
+                
+                // iOS: Ensure video is never muted
+                if (isIOS && videoElement.muted) {
+                    console.log('⚠ iOS: Video was muted, unmuting...');
+                    videoElement.muted = false;
+                    videoElement.volume = Math.max(volumeLevel / 100, 0.01);
+                }
             }
             
-            // Check NoSleep video
-            if (noSleepVideo && noSleepVideo.paused) {
+            // Check and restart NoSleep video if enabled and paused
+            if (noSleepEnabled && noSleepVideo && noSleepVideo.paused) {
                 console.log('NoSleep video paused, restarting...');
                 noSleepVideo.play().catch(err => {
                     console.log('Could not restart NoSleep video:', err);
                 });
             }
+            
+            // Re-request wake lock if it was released (e.g., by system)
+            if (wakeLockSupported && (wakeLock === null || (wakeLock && wakeLock.released))) {
+                console.log('⚠ Wake lock was released, re-requesting...');
+                requestWakeLock().catch(err => {
+                    console.log('Could not re-request wake lock:', err);
+                });
+            }
+            
+            // iOS: Log status for debugging (only log issues, not normal state)
+            if (isIOS && videoElement) {
+                const hasIssue = videoElement.paused || videoElement.muted || 
+                                (wakeLockSupported && (wakeLock === null || wakeLock.released));
+                
+                if (hasIssue) {
+                    const status = {
+                        playing: !videoElement.paused,
+                        muted: videoElement.muted,
+                        volume: videoElement.volume,
+                        wakeLock: wakeLock !== null && !wakeLock?.released
+                    };
+                    console.log('⚠ iOS Keep-Alive Issue:', status);
+                }
+            }
         }
-    }, 5000);
+    }, checkInterval);
     
-    console.log('Keep-alive mechanism started');
+    console.log(`Keep-alive mechanism started (checking every ${checkInterval}ms)`);
 }
 
 function stopKeepAlive() {
@@ -359,10 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', setVhUnit);
     window.addEventListener('orientationchange', () => setTimeout(setVhUnit, 100));
 
-    // Detect iOS Safari to tweak some transforms/z-index behavior
-    const ua = window.navigator.userAgent;
-    const isIOS = /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+    // Add iOS Safari class for potential CSS tweaks
     if (isIOS && isSafari) {
         document.documentElement.classList.add('ios-safari');
     }
@@ -401,6 +570,9 @@ function loadChannel(channelIndex) {
     const videoFrame = document.getElementById('videoFrame');
     const staticNoise = document.getElementById('staticNoise');
     const channelDisplay = document.getElementById('channelDisplay');
+
+    // We are now loading a (possibly new) channel
+    channelChanging = true;
     
     // Clear previous content
     videoFrame.innerHTML = '';
@@ -409,10 +581,16 @@ function loadChannel(channelIndex) {
     videoElement = document.createElement('video');
     videoElement.autoplay = true;
     videoElement.loop = true;
-    videoElement.playsInline = true;
+    videoElement.playsInline = true; // CRITICAL for iOS inline playback
     videoElement.muted = isMuted;
     videoElement.volume = volumeLevel / 100;
     videoElement.preload = 'auto'; // Ensure video is fully loaded
+    
+    // iOS CRITICAL: Set additional attributes to prevent auto-pause
+    if (isIOS) {
+        videoElement.setAttribute('webkit-playsinline', ''); // Legacy iOS support
+        videoElement.setAttribute('x-webkit-airplay', 'allow');
+    }
 
     // Add <source> element for webm only
     const webmSource = document.createElement('source');
@@ -420,17 +598,77 @@ function loadChannel(channelIndex) {
     webmSource.type = 'video/webm';
     videoElement.appendChild(webmSource);
 
-    // Prevent user from pausing the video
+    // Prevent user from pausing the video - important for iOS
+    // Note: Don't interfere with natural 'ended' state for looping
     videoElement.addEventListener('pause', () => {
-        if (!videoElement.ended) {
-            videoElement.play();
+        // Allow pause if video has ended (it will loop automatically)
+        if (videoElement.ended) {
+            return;
+        }
+        
+        // Otherwise, if unmuted, resume playback
+        if (!isMuted) {
+            console.log('Video paused unexpectedly, resuming...');
+            videoElement.play().catch(err => {
+                console.log('Could not resume paused video:', err);
+            });
         }
     });
 
-    // Ensure video keeps playing
+    // Robust looping: if the loop attribute fails on some browsers/codecs, manually restart
+    // Only do this if we are NOT in the process of switching channels
     videoElement.addEventListener('ended', () => {
-        videoElement.play();
+        if (channelChanging) return; // A new channel is coming in; don't restart this one
+        // Immediate restart (avoids brief pause). currentTime reset ensures proper seek to start.
+        videoElement.currentTime = 0;
+        const p = videoElement.play();
+        if (p) {
+            p.catch(err => console.log('Manual loop restart failed:', err));
+        }
     });
+    
+    // iOS-specific: Handle when video starts playing
+    videoElement.addEventListener('play', () => {
+        console.log('Video playback started');
+        // If unmuted, make sure wake lock is active
+        if (!isMuted) {
+            requestWakeLock().catch(err => {
+                console.log('Could not request wake lock on play:', err);
+            });
+        }
+    });
+    
+    // iOS-specific: Detect when video can play through without buffering
+    videoElement.addEventListener('canplaythrough', () => {
+        console.log('Video can play through');
+    }, { once: true });
+    
+    // iOS CRITICAL: Prevent video from being muted by iOS
+    if (isIOS) {
+        videoElement.addEventListener('volumechange', () => {
+            // If iOS tries to mute the video, unmute it immediately
+            if (!isMuted && videoElement.muted) {
+                console.log('⚠ iOS tried to mute video, preventing...');
+                videoElement.muted = false;
+                videoElement.volume = Math.max(volumeLevel / 100, 0.01);
+            }
+        });
+        
+        // iOS: Monitor for any suspend/stall events
+        videoElement.addEventListener('suspend', () => {
+            console.log('⚠ iOS: Video suspended, attempting resume...');
+            if (!isMuted) {
+                videoElement.play().catch(err => console.log('Resume failed:', err));
+            }
+        });
+        
+        videoElement.addEventListener('stalled', () => {
+            console.log('⚠ iOS: Video stalled, attempting resume...');
+            if (!isMuted) {
+                videoElement.play().catch(err => console.log('Resume failed:', err));
+            }
+        });
+    }
 
     // Style the video element
     videoElement.style.width = '100%';
@@ -472,6 +710,8 @@ function loadChannel(channelIndex) {
     videoElement.addEventListener('canplay', () => {
         staticNoise.classList.remove('active');
         stopStaticNoise();
+        // Channel finished loading; future ended events should loop
+        channelChanging = false;
     }, { once: true });
     
     // Force play video immediately
@@ -496,6 +736,9 @@ function changeChannel(direction) {
     staticNoise.classList.add('active');
     drawStaticNoise();
     playStaticSound();
+
+    // Indicate we're mid channel switch so the old video's 'ended' won't force-loop
+    channelChanging = true;
 
     // Wait 0.5 seconds of static before changing channel
     setTimeout(() => {
@@ -634,26 +877,69 @@ function spawnCockroach() {
 
 // --- Speaker Animation ---
 let speakerAnimationId = null;
+let speakerTime = 0;
+
 function startSpeakerAnimation() {
     stopSpeakerAnimation();
     const left = document.querySelector('.speaker-left');
     const right = document.querySelector('.speaker-right');
     if (!left || !right) return;
+    
+    // Get all speaker components
+    const leftWoofer = left.querySelector('.speaker-woofer');
+    const leftTweeterTop = left.querySelector('.speaker-tweeter');
+    const leftTweeterBottom = left.querySelector('.speaker-tweeter-bottom');
+    const rightWoofer = right.querySelector('.speaker-woofer');
+    const rightTweeterTop = right.querySelector('.speaker-tweeter');
+    const rightTweeterBottom = right.querySelector('.speaker-tweeter-bottom');
+    
+    speakerTime = 0;
+    
     function animate() {
         // Only animate if NOT muted
         if (!isMuted) {
-            // Random scale between 1 and 1.10
-            const scale = 1 + Math.random() * 0.10;
-            left.style.transform = `scaleY(${scale})`;
-            right.style.transform = `scaleY(${scale})`;
+            speakerTime += 0.1;
+            
+            // Create smooth, wave-based animations with different frequencies
+            // Bass frequencies (woofer) - slower, more pronounced movement
+            const bassWave = Math.sin(speakerTime * 0.5) * 0.5 + 0.5; // 0 to 1
+            const bassScale = 1 + (bassWave * 0.08); // Scale between 1 and 1.08
+            
+            // Mid frequencies (tweeters) - faster, subtle movement
+            const midWave = Math.sin(speakerTime * 1.2) * 0.5 + 0.5;
+            const midScale = 1 + (midWave * 0.04); // Scale between 1 and 1.04
+            
+            // Add slight randomness for natural feel (much subtler than before)
+            const randomVariation = (Math.random() - 0.5) * 0.02;
+            
+            // Apply animations to left speaker
+            if (leftWoofer) leftWoofer.style.transform = `scale(${bassScale + randomVariation})`;
+            if (leftTweeterTop) leftTweeterTop.style.transform = `scale(${midScale + randomVariation * 0.5})`;
+            if (leftTweeterBottom) leftTweeterBottom.style.transform = `scale(${midScale + randomVariation * 0.5})`;
+            
+            // Apply animations to right speaker (slightly offset phase for stereo effect)
+            const rightBassWave = Math.sin((speakerTime + 0.3) * 0.5) * 0.5 + 0.5;
+            const rightBassScale = 1 + (rightBassWave * 0.08);
+            const rightMidWave = Math.sin((speakerTime + 0.3) * 1.2) * 0.5 + 0.5;
+            const rightMidScale = 1 + (rightMidWave * 0.04);
+            
+            if (rightWoofer) rightWoofer.style.transform = `scale(${rightBassScale + randomVariation})`;
+            if (rightTweeterTop) rightTweeterTop.style.transform = `scale(${rightMidScale + randomVariation * 0.5})`;
+            if (rightTweeterBottom) rightTweeterBottom.style.transform = `scale(${rightMidScale + randomVariation * 0.5})`;
         } else {
-            left.style.transform = '';
-            right.style.transform = '';
+            // Reset all transformations when muted
+            if (leftWoofer) leftWoofer.style.transform = '';
+            if (leftTweeterTop) leftTweeterTop.style.transform = '';
+            if (leftTweeterBottom) leftTweeterBottom.style.transform = '';
+            if (rightWoofer) rightWoofer.style.transform = '';
+            if (rightTweeterTop) rightTweeterTop.style.transform = '';
+            if (rightTweeterBottom) rightTweeterBottom.style.transform = '';
         }
         speakerAnimationId = requestAnimationFrame(animate);
     }
     animate();
 }
+
 function stopSpeakerAnimation() {
     if (speakerAnimationId) {
         cancelAnimationFrame(speakerAnimationId);
@@ -661,10 +947,27 @@ function stopSpeakerAnimation() {
     }
     const left = document.querySelector('.speaker-left');
     const right = document.querySelector('.speaker-right');
-    if (left && right) {
-        left.style.transform = '';
-        right.style.transform = '';
+    
+    // Reset all speaker components
+    if (left) {
+        const leftWoofer = left.querySelector('.speaker-woofer');
+        const leftTweeterTop = left.querySelector('.speaker-tweeter');
+        const leftTweeterBottom = left.querySelector('.speaker-tweeter-bottom');
+        if (leftWoofer) leftWoofer.style.transform = '';
+        if (leftTweeterTop) leftTweeterTop.style.transform = '';
+        if (leftTweeterBottom) leftTweeterBottom.style.transform = '';
     }
+    
+    if (right) {
+        const rightWoofer = right.querySelector('.speaker-woofer');
+        const rightTweeterTop = right.querySelector('.speaker-tweeter');
+        const rightTweeterBottom = right.querySelector('.speaker-tweeter-bottom');
+        if (rightWoofer) rightWoofer.style.transform = '';
+        if (rightTweeterTop) rightTweeterTop.style.transform = '';
+        if (rightTweeterBottom) rightTweeterBottom.style.transform = '';
+    }
+    
+    speakerTime = 0;
 }
 function setupSpeakerAnimationEvents() {
     if (!videoElement) return;
@@ -719,6 +1022,35 @@ toggleMute = function() {
         stopKeepAlive();
     }
 };
+
+// One-time initialization on first user interaction (required for iOS)
+let hasUserInteracted = false;
+
+function initializeOnFirstInteraction() {
+    if (hasUserInteracted) return;
+    hasUserInteracted = true;
+    
+    console.log('First user interaction detected - initializing wake lock support');
+    
+    // Check wake lock support
+    wakeLockSupported = 'wakeLock' in navigator;
+    
+    if (wakeLockSupported) {
+        console.log('Wake Lock API is supported');
+    } else {
+        console.log('Wake Lock API not supported - will use video playback fallback');
+    }
+    
+    // Remove the one-time event listeners
+    document.removeEventListener('click', initializeOnFirstInteraction);
+    document.removeEventListener('touchstart', initializeOnFirstInteraction);
+    document.removeEventListener('keydown', initializeOnFirstInteraction);
+}
+
+// Add one-time event listeners for first interaction (important for iOS)
+document.addEventListener('click', initializeOnFirstInteraction, { once: true });
+document.addEventListener('touchstart', initializeOnFirstInteraction, { once: true });
+document.addEventListener('keydown', initializeOnFirstInteraction, { once: true });
 
 // Event listeners
 function setupEventListeners() {
@@ -900,6 +1232,14 @@ function positionUnmuteTooltip() {
 function showUnmuteTooltip() {
     const tooltip = document.getElementById('unmuteTooltip');
     if (!tooltip) return;
+    
+    // iOS: Update tooltip text to emphasize importance
+    if (isIOS) {
+        const tooltipText = tooltip.querySelector('.tooltip-text');
+        if (tooltipText) {
+            tooltipText.textContent = 'Click to unmute';
+        }
+    }
     
     // Position and show tooltip after a short delay
     setTimeout(() => {
