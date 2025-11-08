@@ -20,6 +20,12 @@ const videoFiles = [
     {
         webm: GITHUB_RAW_BASE + 'kafka-edit.webm'
     },
+    {
+        webm: GITHUB_RAW_BASE + 'yodel.webm'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'holzhacker.webm'
+    },
     // Add more video file objects as needed
 ];
 
