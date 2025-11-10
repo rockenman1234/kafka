@@ -1158,45 +1158,72 @@ function setupEventListeners() {
     });
 
     // Touch support for mobile devices
+    let touchMoved = false;
+    let touchStartTime = 0;
+    let lastToggleTime = 0;
+    
     volumeKnob.addEventListener('touchstart', (e) => {
+        touchMoved = false;
+        touchStartTime = Date.now();
         isDragging = true;
         startY = e.touches[0].clientY;
         startVolume = volumeLevel;
-        e.preventDefault();
-    }, { passive: false });
+        // Don't prevent default yet - let it determine if it's a tap or drag
+    }, { passive: true });
     
     document.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
         
-        const deltaY = startY - e.touches[0].clientY; // Inverted: drag up = increase volume
-        const volumeChange = Math.round(deltaY / 2); // 2px = 1 volume unit
-        const newVolume = Math.max(0, Math.min(100, startVolume + volumeChange));
+        const deltaY = Math.abs(startY - e.touches[0].clientY);
         
-        if (newVolume !== volumeLevel) {
-            volumeLevel = newVolume;
-            if (videoElement) {
-                videoElement.volume = volumeLevel / 100;
-                if (isMuted && volumeLevel > 0) {
-                    isMuted = false;
-                    videoElement.muted = false;
-                    // Request wake lock and start keep-alive when unmuting via touch
-                    requestWakeLock();
-                    startKeepAlive();
-                }
-            }
-            showVolumeIndicator();
+        // If moved more than 10px, it's a drag not a tap
+        if (deltaY > 10) {
+            touchMoved = true;
             
-            // Rotate knob based on volume change
-            knobRotation = volumeChange * 3;
-            volumeKnob.style.transform = `rotate(${knobRotation}deg)`;
+            const actualDeltaY = startY - e.touches[0].clientY; // Inverted: drag up = increase volume
+            const volumeChange = Math.round(actualDeltaY / 2); // 2px = 1 volume unit
+            const newVolume = Math.max(0, Math.min(100, startVolume + volumeChange));
+            
+            if (newVolume !== volumeLevel) {
+                volumeLevel = newVolume;
+                if (videoElement) {
+                    videoElement.volume = volumeLevel / 100;
+                    if (isMuted && volumeLevel > 0) {
+                        isMuted = false;
+                        videoElement.muted = false;
+                        // Request wake lock and start keep-alive when unmuting via touch
+                        requestWakeLock();
+                        startKeepAlive();
+                    }
+                }
+                showVolumeIndicator();
+                
+                // Rotate knob based on volume change
+                knobRotation = volumeChange * 3;
+                volumeKnob.style.transform = `rotate(${knobRotation}deg)`;
+            }
         }
-        
-        e.preventDefault();
-    }, { passive: false });
+    }, { passive: true });
     
-    document.addEventListener('touchend', () => {
+    volumeKnob.addEventListener('touchend', (e) => {
         if (isDragging) {
+            const touchDuration = Date.now() - touchStartTime;
+            const now = Date.now();
+            
+            // If it was a quick tap (less than 200ms and didn't move much)
+            // AND we haven't toggled in the last 300ms (debounce)
+            if (!touchMoved && touchDuration < 200 && (now - lastToggleTime) > 300) {
+                // Prevent the click event from also firing
+                e.preventDefault();
+                // Trigger the toggle mute function
+                toggleMute();
+                // Hide the unmute tooltip
+                hideUnmuteTooltip();
+                lastToggleTime = now;
+            }
+            
             isDragging = false;
+            touchMoved = false;
         }
     });
 
