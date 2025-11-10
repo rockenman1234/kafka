@@ -1,31 +1,16 @@
 // Local video files from /vids directory
 // Each entry is an object with both mp4 and webm sources
 const GITHUB_RAW_BASE = 'https://github.com/rockenman1234/kafka/raw/main/vids/';
+// WebM-only playlist. Ensure your WebM files use an audio codec Safari supports (e.g., Opus in recent iOS versions).
 const videoFiles = [
-    {
-        webm: GITHUB_RAW_BASE + 'rick-astley.webm'
-    },
-    {
-        webm: GITHUB_RAW_BASE + 'la-cucaracha.webm'
-    },
-    {
-        webm: GITHUB_RAW_BASE + 'messi-glaze.webm'
-    },
-    {
-        webm: GITHUB_RAW_BASE + 'die-woodys.webm'
-    },
-    {
-        webm: GITHUB_RAW_BASE + 'murica.webm'
-    },
-    {
-        webm: GITHUB_RAW_BASE + 'kafka-edit.webm'
-    },
-    {
-        webm: GITHUB_RAW_BASE + 'yodel.webm'
-    },
-    {
-        webm: GITHUB_RAW_BASE + 'holzhacker.webm'
-    },
+    { webm: GITHUB_RAW_BASE + 'rick-astley.webm' },
+    { webm: GITHUB_RAW_BASE + 'la-cucaracha.webm' },
+    { webm: GITHUB_RAW_BASE + 'messi-glaze.webm' },
+    { webm: GITHUB_RAW_BASE + 'die-woodys.webm' },
+    { webm: GITHUB_RAW_BASE + 'murica.webm' },
+    { webm: GITHUB_RAW_BASE + 'kafka-edit.webm' },
+    { webm: GITHUB_RAW_BASE + 'yodel.webm' },
+    { webm: GITHUB_RAW_BASE + 'holzhacker.webm' },
     // Add more video file objects as needed
 ];
 
@@ -53,7 +38,8 @@ let backgroundInterval = null;
 let staticAudio = null;
 let audioContext = null;
 let analyser = null;
-let audioSource = null;
+let audioSource = null; // MediaElementSource for video audio
+let videoGainNode = null; // Gain node to control volume cross-browser (esp. iOS)
 let animationFrameId = null;
 let infoButtonClicks = 0; // Track info button clicks for easter egg
 let wakeLock = null; // Screen Wake Lock API sentinel
@@ -93,6 +79,67 @@ if (isIOS) {
 // Mouse tracking for dynamic background shading
 let mouseX = window.innerWidth / 2;
 let mouseY = window.innerHeight / 2;
+
+// Ensure audio is unlocked on iOS by resuming AudioContext and replaying media within a user gesture
+async function ensureAudioUnlocked() {
+    // Only use Web Audio API on iOS - it causes issues on desktop
+    if (isIOS) {
+        try {
+            // Resume or create AudioContext if needed
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+                console.log('AudioContext resumed');
+            }
+
+            // Lazily create the media element audio graph only when we actually need audible playback
+            setupVideoAudioGraph();
+        } catch (e) {
+            console.log('AudioContext resume failed or unsupported:', e);
+        }
+    }
+
+    // For media elements started muted, iOS often requires an explicit play() inside the gesture that unmutes
+    if (videoElement) {
+        try {
+            videoElement.muted = false;
+            // Set a minimum non-zero volume for iOS to consider it audible
+            videoElement.volume = Math.max(volumeLevel / 100, 0.01);
+            const p = videoElement.play();
+            if (p && typeof p.then === 'function') {
+                await p;
+            }
+            console.log('Video playback ensured after unmute');
+        } catch (err) {
+            console.log('Failed to ensure video playback after unmute:', err);
+        }
+    }
+}
+
+function setupVideoAudioGraph() {
+    // Only use Web Audio API on iOS - it causes issues on desktop
+    if (!isIOS) return;
+    
+    if (!videoElement || !audioContext) return;
+    try {
+        if (!audioSource) {
+            audioSource = audioContext.createMediaElementSource(videoElement);
+            console.log('iOS: MediaElementSource created for video');
+        }
+        if (!videoGainNode) {
+            videoGainNode = audioContext.createGain();
+            videoGainNode.gain.value = isMuted ? 0 : Math.max(volumeLevel / 100, 0.01);
+            audioSource.connect(videoGainNode).connect(audioContext.destination);
+            console.log('iOS: Video audio graph initialized with gain:', videoGainNode.gain.value);
+        } else {
+            videoGainNode.gain.value = isMuted ? 0 : Math.max(volumeLevel / 100, 0.01);
+        }
+    } catch (e) {
+        console.log('setupVideoAudioGraph error:', e);
+    }
+}
 
 // Track mouse movement for background effect
 document.addEventListener('mousemove', (e) => {
@@ -577,7 +624,13 @@ function loadChannel(channelIndex) {
     // Clear previous content
     videoFrame.innerHTML = '';
     
-    // Create native HTML5 video element with only webm source
+    // Reset audio graph for new video element (iOS only)
+    if (isIOS) {
+        audioSource = null;
+        videoGainNode = null;
+    }
+    
+    // Create native HTML5 video element
     videoElement = document.createElement('video');
     videoElement.autoplay = true;
     videoElement.loop = true;
@@ -592,9 +645,10 @@ function loadChannel(channelIndex) {
         videoElement.setAttribute('x-webkit-airplay', 'allow');
     }
 
-    // Add <source> element for webm only
+    // Append single WebM source (playlist is WebM-only)
+    const file = shuffledVideoFiles[channelIndex];
     const webmSource = document.createElement('source');
-    webmSource.src = shuffledVideoFiles[channelIndex].webm;
+    webmSource.src = file.webm;
     webmSource.type = 'video/webm';
     videoElement.appendChild(webmSource);
 
@@ -678,8 +732,14 @@ function loadChannel(channelIndex) {
     // Add to DOM
     videoFrame.appendChild(videoElement);
 
-    // If unmuted, ensure video is unmuted
+    // Defer Web Audio pipeline until audio is unlocked and unmuted to ensure autoplay works while muted on iOS
+    // The graph will be created in ensureAudioUnlocked()/setupVideoAudioGraph()
+
+    // If unmuted, set up audio graph (iOS only) and ensure video is unmuted
     if (!isMuted) {
+        if (isIOS && audioContext) {
+            setupVideoAudioGraph();
+        }
         videoElement.muted = false;
     }
 
@@ -700,9 +760,9 @@ function loadChannel(channelIndex) {
     }, { once: true });
     
     // Also handle source errors
+    // Handle source error
     webmSource.addEventListener('error', (e) => {
-        console.log(`Source error on channel ${channelIndex + 1}, skipping to next...`, e);
-        // Trigger the video element error handler
+        console.log(`WebM source error on channel ${channelIndex + 1}`, e);
         videoElement.dispatchEvent(new Event('error'));
     }, { once: true });
     
@@ -721,6 +781,7 @@ function loadChannel(channelIndex) {
             // Autoplay started successfully
             if (!isMuted) {
                 videoElement.muted = false;
+                if (videoGainNode) videoGainNode.gain.value = Math.max(volumeLevel / 100, 0.01);
             }
         }).catch(err => {
             // Autoplay was prevented
@@ -753,11 +814,30 @@ function changeChannel(direction) {
     }, 500);
 }
 
-function toggleMute() {
+async function toggleMute() {
     isMuted = !isMuted;
+    
     if (videoElement) {
-        videoElement.muted = isMuted;
+        // If we're unmuting, we need to ensure audio is unlocked first
+        if (!isMuted) {
+            await ensureAudioUnlocked();
+        }
+        
+        // On iOS: use Web Audio API gain node if it exists
+        // On Desktop: use native video element controls
+        if (isIOS && videoGainNode) {
+            // iOS: Web Audio API controls the audio
+            videoGainNode.gain.value = isMuted ? 0 : Math.max(volumeLevel / 100, 0.01);
+            videoElement.muted = isMuted;
+        } else {
+            // Desktop or no Web Audio API: use native mute
+            videoElement.muted = isMuted;
+        }
+        
+        // Ensure video volume is set
+        videoElement.volume = Math.max(volumeLevel / 100, 0.01);
     }
+    
     setKnobGlow();
     showVolumeIndicator();
     
@@ -775,12 +855,18 @@ function adjustVolume(delta) {
     volumeLevel = Math.max(0, Math.min(100, volumeLevel + delta));
     if (videoElement) {
         videoElement.volume = volumeLevel / 100;
+        if (isIOS && videoGainNode) {
+            // iOS: Use GainNode as canonical volume controller
+            videoGainNode.gain.value = isMuted ? 0 : Math.max(volumeLevel / 100, 0.01);
+        }
         if (isMuted && volumeLevel > 0) {
             isMuted = false;
             videoElement.muted = false;
-            // Request wake lock and start keep-alive when unmuting via volume adjustment
+            // Unlock audio pipeline & wake lock when unmuting via volume adjustment
+            ensureAudioUnlocked();
             requestWakeLock();
             startKeepAlive();
+            if (isIOS && videoGainNode) videoGainNode.gain.value = Math.max(volumeLevel / 100, 0.01);
         }
     }
     showVolumeIndicator();
@@ -1137,9 +1223,10 @@ function setupEventListeners() {
                 if (isMuted && volumeLevel > 0) {
                     isMuted = false;
                     videoElement.muted = false;
-                    // Request wake lock and start keep-alive when unmuting via drag
+                    ensureAudioUnlocked();
                     requestWakeLock();
                     startKeepAlive();
+                    if (videoGainNode) videoGainNode.gain.value = Math.max(volumeLevel / 100, 0.01);
                 }
             }
             showVolumeIndicator();
@@ -1191,9 +1278,10 @@ function setupEventListeners() {
                     if (isMuted && volumeLevel > 0) {
                         isMuted = false;
                         videoElement.muted = false;
-                        // Request wake lock and start keep-alive when unmuting via touch
+                        ensureAudioUnlocked();
                         requestWakeLock();
                         startKeepAlive();
+                        if (videoGainNode) videoGainNode.gain.value = Math.max(volumeLevel / 100, 0.01);
                     }
                 }
                 showVolumeIndicator();
