@@ -1157,6 +1157,49 @@ function setupEventListeners() {
         }
     });
 
+    // Touch support for mobile devices
+    volumeKnob.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        startY = e.touches[0].clientY;
+        startVolume = volumeLevel;
+        e.preventDefault();
+    }, { passive: false });
+    
+    document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        
+        const deltaY = startY - e.touches[0].clientY; // Inverted: drag up = increase volume
+        const volumeChange = Math.round(deltaY / 2); // 2px = 1 volume unit
+        const newVolume = Math.max(0, Math.min(100, startVolume + volumeChange));
+        
+        if (newVolume !== volumeLevel) {
+            volumeLevel = newVolume;
+            if (videoElement) {
+                videoElement.volume = volumeLevel / 100;
+                if (isMuted && volumeLevel > 0) {
+                    isMuted = false;
+                    videoElement.muted = false;
+                    // Request wake lock and start keep-alive when unmuting via touch
+                    requestWakeLock();
+                    startKeepAlive();
+                }
+            }
+            showVolumeIndicator();
+            
+            // Rotate knob based on volume change
+            knobRotation = volumeChange * 3;
+            volumeKnob.style.transform = `rotate(${knobRotation}deg)`;
+        }
+        
+        e.preventDefault();
+    }, { passive: false });
+    
+    document.addEventListener('touchend', () => {
+        if (isDragging) {
+            isDragging = false;
+        }
+    });
+
     // Keyboard controls
     document.addEventListener('keydown', (e) => {
         switch(e.key) {
