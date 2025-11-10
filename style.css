@@ -828,7 +828,7 @@ iframe {
 
 .speaker-grill {
     position: absolute;
-    bottom: 25px;
+    bottom: 20px;
     width: 51px; /* 80% of 64px (which was already 80%) = 51.2px */
     height: 85px; /* 80% of 106px (which was already 80%) = 84.8px */
     transition: transform 0.05s ease-out, filter 0.05s ease-out;
@@ -836,25 +836,25 @@ iframe {
 }
 
 .speaker-left {
-    left: 30px;
-    transform: scaleX(-1); /* Flip horizontally to face left */
+    left: 60px;
+    transform: rotate(-90deg); /* Rotate 90 degrees inward (counterclockwise) to lay flat */
 }
 
 .speaker-right {
-    right: 30px;
-    /* No flip needed - faces right by default */
+    right: 60px;
+    transform: rotate(90deg); /* Rotate 90 degrees inward (clockwise) to lay flat */
 }
 
 /* Animate the woofer cones when audio is playing */
 .speaker-grill .speaker-woofer {
     transform-origin: center;
-    transition: transform 0.05s ease-out;
+    transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .speaker-grill .speaker-tweeter,
 .speaker-grill .speaker-tweeter-bottom {
     transform-origin: center;
-    transition: transform 0.05s ease-out;
+    transition: transform 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 /* Add subtle inner shadow to speaker housing for depth */
@@ -876,11 +876,13 @@ iframe {
 }
 
 .speaker-left {
-    left: 30px;
+    left: 60px;
+    transform: rotate(-90deg); /* Rotate 90 degrees inward (counterclockwise) to lay flat */
 }
 
 .speaker-right {
-    right: 30px;
+    right: 60px;
+    transform: rotate(90deg); /* Rotate 90 degrees inward (clockwise) to lay flat */
 }
 
 /* Woofer cone animation when audio is playing */
@@ -976,15 +978,17 @@ iframe {
     .speaker-grill {
         width: 51px; /* 80% of previous size */
         height: 85px; /* 80% of previous size */
-        bottom: 20px;
+        bottom: 15px;
     }
 
     .speaker-left {
-        left: 15px;
+        left: 45px;
+        transform: rotate(-90deg); /* Rotate 90 degrees inward (counterclockwise) to lay flat */
     }
 
     .speaker-right {
-        right: 15px;
+        right: 45px;
+        transform: rotate(90deg); /* Rotate 90 degrees inward (clockwise) to lay flat */
     }
 
     .antenna {

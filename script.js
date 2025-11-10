@@ -902,15 +902,15 @@ function startSpeakerAnimation() {
             
             // Create smooth, wave-based animations with different frequencies
             // Bass frequencies (woofer) - slower, more pronounced movement
-            const bassWave = Math.sin(speakerTime * 0.5) * 0.5 + 0.5; // 0 to 1
-            const bassScale = 1 + (bassWave * 0.08); // Scale between 1 and 1.08
+            const bassWave = Math.sin(speakerTime * 0.7) * 0.5 + 0.5; // 0 to 1
+            const bassScale = 1 + (bassWave * 0.20); // Scale between 1 and 1.20 (much more visible)
             
-            // Mid frequencies (tweeters) - faster, subtle movement
-            const midWave = Math.sin(speakerTime * 1.2) * 0.5 + 0.5;
-            const midScale = 1 + (midWave * 0.04); // Scale between 1 and 1.04
+            // Mid frequencies (tweeters) - faster, more noticeable movement
+            const midWave = Math.sin(speakerTime * 1.6) * 0.5 + 0.5;
+            const midScale = 1 + (midWave * 0.12); // Scale between 1 and 1.12 (much more visible)
             
-            // Add slight randomness for natural feel (much subtler than before)
-            const randomVariation = (Math.random() - 0.5) * 0.02;
+            // Add slight randomness for natural feel
+            const randomVariation = (Math.random() - 0.5) * 0.04;
             
             // Apply animations to left speaker
             if (leftWoofer) leftWoofer.style.transform = `scale(${bassScale + randomVariation})`;
@@ -918,10 +918,10 @@ function startSpeakerAnimation() {
             if (leftTweeterBottom) leftTweeterBottom.style.transform = `scale(${midScale + randomVariation * 0.5})`;
             
             // Apply animations to right speaker (slightly offset phase for stereo effect)
-            const rightBassWave = Math.sin((speakerTime + 0.3) * 0.5) * 0.5 + 0.5;
-            const rightBassScale = 1 + (rightBassWave * 0.08);
-            const rightMidWave = Math.sin((speakerTime + 0.3) * 1.2) * 0.5 + 0.5;
-            const rightMidScale = 1 + (rightMidWave * 0.04);
+            const rightBassWave = Math.sin((speakerTime + 0.5) * 0.7) * 0.5 + 0.5;
+            const rightBassScale = 1 + (rightBassWave * 0.20);
+            const rightMidWave = Math.sin((speakerTime + 0.5) * 1.6) * 0.5 + 0.5;
+            const rightMidScale = 1 + (rightMidWave * 0.12);
             
             if (rightWoofer) rightWoofer.style.transform = `scale(${rightBassScale + randomVariation})`;
             if (rightTweeterTop) rightTweeterTop.style.transform = `scale(${rightMidScale + randomVariation * 0.5})`;
