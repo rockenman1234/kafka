@@ -3,14 +3,38 @@
 const GITHUB_RAW_BASE = 'https://github.com/rockenman1234/kafka/raw/main/vids/';
 // WebM-only playlist. Ensure your WebM files use an audio codec Safari supports (e.g., Opus in recent iOS versions).
 const videoFiles = [
-    { webm: GITHUB_RAW_BASE + 'rick-astley.webm' },
-    { webm: GITHUB_RAW_BASE + 'la-cucaracha.webm' },
-    { webm: GITHUB_RAW_BASE + 'messi-glaze.webm' },
-    { webm: GITHUB_RAW_BASE + 'die-woodys.webm' },
-    { webm: GITHUB_RAW_BASE + 'murica.webm' },
-    { webm: GITHUB_RAW_BASE + 'kafka-edit.webm' },
-    { webm: GITHUB_RAW_BASE + 'yodel.webm' },
-    { webm: GITHUB_RAW_BASE + 'holzhacker.webm' },
+    {
+        webm: GITHUB_RAW_BASE + 'rick-astley.webm',
+        description: 'An upbeat montage with quick cuts and retro styling. Bright colors and energetic pacing create a feel-good atmosphere that works well for lively backgrounds or comedic interludes.'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'la-cucaracha.webm',
+        description: 'A playful, percussive clip with whimsical motion and folk-inspired rhythm. The visuals lean into hand-crafted textures and lively camera moves to keep the viewer smiling.'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'messi-glaze.webm',
+        description: 'A slow-motion sports highlight emphasizing elegant movement and form. Subtle color grading and deliberate framing make this clip ideal for dramatic montages or introspective sequences.'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'die-woodys.webm',
+        description: 'A gritty, cinematic vignette with high-contrast lighting and a raw aesthetic. Close-up details and atmospheric grain convey a handcrafted, analogue feel.'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'murica.webm',
+        description: 'A bold, saturated montage playing with iconic Americana visuals and wide landscapes. Fast edits and heroic compositions give the footage an expansive, anthemic character.'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'kafka-edit.webm',
+        description: 'A surreal, experimental edit that juxtaposes mundane scenes with unsettling transitions. The piece cultivates a dreamlike, slightly disorienting mood perfect for artful interludes.'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'yodel.webm',
+        description: 'An alpine-inspired sequence balancing serene mountain vistas with playful vocal samples. The clip mixes wide, peaceful panoramas and lively close-ups to create a charming contrast.'
+    },
+    {
+        webm: GITHUB_RAW_BASE + 'holzhacker.webm',
+        description: 'A hands-on, industrial vignette focused on craft and motion. Tight shots of tools, wood grain, and repeated gestures emphasize texture and the satisfying rhythm of manual work.'
+    },
     // Add more video file objects as needed
 ];
 
@@ -138,6 +162,33 @@ function setupVideoAudioGraph() {
         }
     } catch (e) {
         console.log('setupVideoAudioGraph error:', e);
+    }
+}
+
+// Helper to detect mobile viewport (match CSS breakpoint)
+function isMobileViewport() {
+    return window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
+}
+
+// Update rolodex text display with scroll animation reset
+function updateRolodexText(channelIndex) {
+    const rolodexText = document.getElementById('rolodexText');
+    const file = shuffledVideoFiles[channelIndex];
+    
+    // Remove animation temporarily
+    rolodexText.style.animation = 'none';
+    
+    // Update text
+    rolodexText.textContent = file.description || 'Lorem ipsum dolor sit amet';
+    
+    // Trigger reflow to restart animation if needed
+    void rolodexText.offsetWidth;
+
+    // Use vertical bottom-to-top marquee on desktop; mobile rolodex is hidden
+    if (!isMobileViewport()) {
+        rolodexText.style.animation = 'scrollText 12s linear infinite, textGlow 2s ease-in-out infinite';
+    } else {
+        rolodexText.style.animation = 'none';
     }
 }
 
@@ -745,6 +796,9 @@ function loadChannel(channelIndex) {
 
     // Update channel display
     channelDisplay.textContent = `CH ${channelIndex + 1}`;
+    
+    // Update rolodex text display
+    updateRolodexText(channelIndex);
     
     // Handle video loading errors - skip to next channel
     videoElement.addEventListener('error', (e) => {

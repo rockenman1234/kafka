@@ -11,8 +11,15 @@
         /* Mobile-only helper variable: positive value moves the unmute tooltip up
            (we add this to existing bottom calculations) */
         --unmute-offset: 40px;
-        /* ADJUST THIS VALUE: Distance from bottom of screen to top of "CHANNEL"/"VOLUME" labels (10px = 10px above labels) */
-        --screen-bottom-clearance: 5px;
+        /* Space reserved math */
+        --rolodex-height: 50px;
+        --gap-screen-to-rolodex: 5px;         /* desired small gap */
+        --gap-rolodex-to-speakers: 12px;      /* breathing room above speakers */
+        /* Bottom clearance from container bottom to screen bottom */
+        --screen-bottom-clearance: calc(
+            var(--speaker-bottom) + var(--speaker-height) + var(--gap-rolodex-to-speakers)
+            + var(--rolodex-height) + var(--gap-screen-to-rolodex)
+        );
         /* Move the whole TV container down by ~20px on mobile only */
         transform: translateY(20px);
     }
@@ -21,9 +28,29 @@
     .screen-container {
         position: relative;
         margin: 0 auto;
-        width: calc(100% - 15vw) !important; /* Reduce width more to create proper buffer */
-        max-height: calc(100% - var(--screen-bottom-clearance)) !important; /* Use variable for easy adjustment */
-        aspect-ratio: 4/3;
+        /* Fill the inner content width (inside TV padding) */
+        width: 100% !important;
+        max-height: calc(100% - var(--screen-bottom-clearance)) !important; /* Keep room for rolodex */
+        aspect-ratio: 16/9;
+        /* Nudge the picture frame down slightly to match desktop proportions */
+        margin-top: 20px;
+    }
+
+    /* Ensure inner frame and video honor 16:9 on mobile */
+    .video-frame,
+    .video-frame video {
+        aspect-ratio: 16/9 !important;
+    }
+
+    /* Position rolodex between picture and speakers, no overlap */
+    .text-rolodex {
+        position: absolute !important;
+        /* Anchor to the TV container's padding box so it doesn't spill */
+        left: 0 !important;
+        right: 0 !important;
+        bottom: calc(var(--speaker-bottom) + var(--speaker-height) + var(--gap-rolodex-to-speakers)) !important;
+        height: var(--rolodex-height) !important;
+        z-index: 5;
     }
     
     .tv-brand {
@@ -193,6 +220,10 @@ body::before {
         inset 0 2px 4px rgba(255, 255, 255, 0.1);
     border: 8px solid #2d1f13;
     z-index: 1;
+    /* Speaker metrics used for mobile layout math */
+    --speaker-bottom: 20px;
+    --speaker-height: 85px;
+    --rolodex-height: 60px; /* default desktop rolodex height */
 }
 
 .tv-brand {
@@ -238,6 +269,52 @@ body::before {
     display: block;
 }
 
+
+/* Final mobile override to guarantee a true 16:9 picture and
+     remove earlier 4:3 + height caps that were set later in the file. */
+@media (max-width: 700px) {
+    .tv-container .screen-container {
+        aspect-ratio: 16 / 9 !important;
+        width: 100% !important;
+        height: auto !important;
+        max-height: none !important; /* avoid 60vw cap on mobile */
+    }
+    .tv-container .video-frame,
+    .tv-container .video-frame video {
+        aspect-ratio: 16 / 9 !important;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+    }
+}
+
+/* Desktop: vertical bottom-to-top scroll with wrapped paragraphs */
+@media (min-width: 701px) {
+    .text-rolodex {
+        height: 60px;            /* fixed viewport for marquee */
+        overflow: hidden;        /* hide overflow; we animate inside */
+        padding: 0 16px;         /* side padding only */
+    }
+    .rolodex-scrolling-container {
+        align-items: center;
+        padding: 0 16px;          /* symmetric side padding for content */
+    }
+    .rolodex-text {
+        position: absolute;        /* allow translate without affecting container */
+        left: 0;
+        right: 0;                  /* ensure equal right spacing */
+        width: auto;               /* let left/right define width */
+        display: block;            /* ensure width applies and wrapping works */
+        box-sizing: border-box;    
+        padding: 0;                /* use container padding for symmetric sides */
+        text-align: left;          /* avoid center causing perceived clip on right */
+        white-space: normal !important;       /* wrap lines at spaces */
+        word-break: normal !important;        /* don't cut words unless necessary */
+        overflow-wrap: break-word !important; /* break very long tokens if needed */
+        hyphens: auto;             /* gentle hyphenation when supported */
+        line-height: 1.4;
+    }
+}
 
 .info-button:hover {
     background: linear-gradient(145deg, #666, #333);
@@ -356,8 +433,14 @@ body::before {
         /* ensure the same mobile offset variable is available in the 600px media query
            and keep the TV moved down on smaller screens too */
         --unmute-offset: 40px;
-        /* ADJUST THIS VALUE: Distance from bottom of screen to top of "CHANNEL"/"VOLUME" labels (10px = 10px above labels) */
-        --screen-bottom-clearance: 95px;
+        /* Reserve space for the rolodex above the speakers */
+        --rolodex-height: 50px;
+        --gap-screen-to-rolodex: 5px;
+        --gap-rolodex-to-speakers: 12px;
+        --screen-bottom-clearance: calc(
+            var(--speaker-bottom) + var(--speaker-height) + var(--gap-rolodex-to-speakers)
+            + var(--rolodex-height) + var(--gap-screen-to-rolodex)
+        );
         transform: translateY(20px);
     }
     /* Move the floating tooltip under the dial */
@@ -372,23 +455,35 @@ body::before {
         z-index: 1001;
     }
     .screen-container {
-        width: calc(100% - 20vw) !important; /* Reduce width more to create proper buffer */
-        aspect-ratio: 4/3;
-        max-height: calc(100% - var(--screen-bottom-clearance)) !important; /* Use variable for easy adjustment */
+        width: 100% !important; /* fill inner width on small phones */
+        aspect-ratio: 16/9;
+        max-height: calc(100% - var(--screen-bottom-clearance)) !important;
         height: auto;
         border-radius: 2vw;
-        margin: 0 auto; /* Center the screen */
+        margin: 20px auto 0 auto; /* nudge down by ~20px */
     }
     .video-frame {
         width: 100%;
         height: 100%;
-        aspect-ratio: 4/3;
+        aspect-ratio: 16/9;
     }
     .video-frame video {
         width: 100%;
         height: 100%;
         object-fit: cover;
-        aspect-ratio: 4/3;
+        aspect-ratio: 16/9;
+    }
+    .text-rolodex {
+        position: absolute !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: calc(var(--speaker-bottom) + var(--speaker-height) + var(--gap-rolodex-to-speakers)) !important;
+        height: var(--rolodex-height) !important;
+        z-index: 5;
+    }
+    .rolodex-text {
+        font-size: 13px;
+        padding: 0 15px;
     }
     .info-modal-content {
         padding: 30px 25px;
@@ -416,6 +511,7 @@ body::before {
     aspect-ratio: 4/3;
     max-height: 60vw;
     height: auto;
+    margin-bottom: 5px;
     background: 
         linear-gradient(135deg, rgba(42, 37, 32, 0.95) 0%, rgba(26, 21, 16, 0.98) 50%, rgba(42, 37, 32, 0.95) 100%),
         repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(80, 70, 60, 0.1) 2px, rgba(80, 70, 60, 0.1) 4px),
@@ -618,6 +714,117 @@ body::before {
     left: 0;
     z-index: 2;
     background: transparent; /* Ensure background is transparent so GIF shows through */
+}
+
+.text-rolodex {
+    position: relative;
+    width: 100%;
+    height: 60px;
+    margin: 0;
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.85) 0%, rgba(10, 10, 10, 0.9) 100%);
+    border: 3px solid rgba(93, 66, 42, 0.6);
+    border-radius: 6px;
+    z-index: 5;
+    overflow: hidden;
+    box-shadow: 
+        inset 0 2px 8px rgba(255, 255, 255, 0.08),
+        inset 0 -2px 6px rgba(0, 0, 0, 0.5),
+        0 4px 12px rgba(0, 0, 0, 0.6),
+        0 0 20px rgba(212, 165, 116, 0.1);
+    backdrop-filter: blur(2px);
+}
+
+.text-rolodex::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.15) 0%,
+        rgba(255, 255, 255, 0.05) 20%,
+        transparent 50%,
+        rgba(0, 0, 0, 0.2) 100%
+    );
+    pointer-events: none;
+    z-index: 2;
+}
+
+.text-rolodex::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        repeating-linear-gradient(
+            0deg,
+            transparent 0px,
+            rgba(255, 255, 255, 0.02) 1px,
+            transparent 2px
+        );
+    pointer-events: none;
+    z-index: 3;
+}
+
+.rolodex-scrolling-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.rolodex-text {
+    color: #d4a574;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    padding: 0 20px;
+    letter-spacing: 1.5px;
+    text-shadow: 
+        0 0 10px rgba(212, 165, 116, 0.6),
+        0 0 20px rgba(212, 165, 116, 0.3);
+    white-space: nowrap;
+    animation: scrollText 8s linear infinite, textGlow 2s ease-in-out infinite;
+    position: absolute;
+    left: 0;
+    width: 100%;
+}
+
+@keyframes scrollText {
+    0% {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+}
+
+@keyframes textGlow {
+    0%, 100% {
+        text-shadow: 
+            0 0 10px rgba(212, 165, 116, 0.6),
+            0 0 20px rgba(212, 165, 116, 0.3);
+    }
+    50% {
+        text-shadow: 
+            0 0 15px rgba(212, 165, 116, 0.8),
+            0 0 30px rgba(212, 165, 116, 0.5);
+    }
 }
 
 iframe {
@@ -940,6 +1147,9 @@ iframe {
         padding: 30px 40px 90px 40px;
         border-radius: 20px;
         border: 6px solid #2d1f13;
+        /* Match smaller speaker placement for calculations */
+        --speaker-bottom: 15px;
+        --speaker-height: 85px;
     }
 
     .tv-brand {
@@ -1062,6 +1272,8 @@ iframe {
 @media (max-width: 500px) {
     .tv-container {
         padding: 25px 30px 80px 30px;
+        --speaker-bottom: 12px;
+        --speaker-height: 64px; /* matches smaller speaker in this breakpoint */
     }
 
     .controls-panel {
@@ -1324,24 +1536,23 @@ video {
 @media (max-width: 700px) {
     .ios-safari .tv-container {
         /* Tunable offsets: adjust these if the red guideline positions change */
-        --screen-top-bound: 95px;      /* slightly lower to avoid clipping */
-        --screen-bottom-bound: 170px;  /* slightly higher to keep above controls */
+        --screen-top-bound: 140px;     /* move picture further down on iOS */
+        --screen-bottom-bound: 170px;  /* legacy var (used for text gap on iOS before); safe to keep */
         /* Ensure enough bottom padding so absolutely positioned screen does not overlap controls */
         padding-bottom: calc(var(--screen-bottom-bound) + 70px); /* preserve existing styling + clearance */
     }
 
     .ios-safari .screen-container {
         position: absolute !important;
-        /* Bounded between red guideline equivalents */
+        /* Position from the top only so aspect-ratio can control height */
         top: var(--screen-top-bound) !important;
-        bottom: var(--screen-bottom-bound) !important;
             left: 50% !important;
             /* Override earlier iOS transform:none with higher-specificity rule below */
             transform: translateX(-50%) !important;
-        /* Allow height to be dictated by top/bottom; aspect-ratio will set width */
-        width: calc(100% - 100px) !important; /* widen ~40px total to grow picture */
-        height: auto !important; /* let bottom/top drive height */
-        aspect-ratio: 4 / 3;
+        /* Let aspect-ratio 16:9 compute height from width */
+        width: 100% !important; /* fill inner content width */
+        height: auto !important;
+        aspect-ratio: 16 / 9;
         /* Provide horizontal breathing room so edges don't touch speaker areas */
             /* Remove previous constraints; width already set */
             max-width: none !important;
@@ -1354,24 +1565,73 @@ video {
         }
 
     /* Ensure the video frame fills the adjusted screen container exactly */
-    .ios-safari .video-frame,
+    .ios-safari .video-frame {
+        width: 100% !important;
+        height: 100% !important;
+    }
     .ios-safari .video-frame video {
         width: 100% !important;
         height: 100% !important;
         object-fit: cover;
+    }
+    .ios-safari .text-rolodex {
+        /* Align with general mobile rules; keep inside padding box */
+        left: 0 !important;
+        right: 0 !important;
+        bottom: calc(var(--speaker-bottom) + var(--speaker-height) + var(--gap-rolodex-to-speakers)) !important;
+        height: 45px !important;
+    }
+    .ios-safari .rolodex-text {
+        font-size: 11px;
+        padding: 0 10px;
     }
 }
 
 /* Slight refinement for very narrow devices (<500px) to keep proportion sane */
 @media (max-width: 500px) {
     .ios-safari .tv-container {
-        --screen-top-bound: 55px;
+        --screen-top-bound: 95px;      /* push down a bit more on very small devices */
         --screen-bottom-bound: 110px;
         padding-bottom: calc(var(--screen-bottom-bound) + 65px);
     }
     .ios-safari .screen-container {
         width: calc(100% - 90px) !important;
         max-width: none;
+    }
+}
+
+
+/* =============================================
+     Mobile overrides: hide rolodex, center screen
+     - Remove the scrolling explanation window on mobile
+     - Center the TV frame by removing mobile translate offsets
+     - Reclaim space reserved for rolodex so the picture grows
+     ============================================= */
+@media (max-width: 700px) {
+    /* Hide the scrolling explanation text window */
+    .text-rolodex { display: none !important; }
+
+    /* Reclaim space previously reserved for the rolodex */
+    .tv-container {
+        --rolodex-height: 0px !important;
+        --gap-screen-to-rolodex: 0px !important;
+        --gap-rolodex-to-speakers: 0px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+
+    /* Let the screen use the full available height above speakers */
+    .screen-container {
+        max-height: calc(100% - (var(--speaker-bottom) + var(--speaker-height))) !important;
+        margin-top: 24px !important; /* nudge screen down on mobile */
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+
+    /* Remove prior mobile translate nudges to truly center */
+    .tv-container,
+    .tv-container .screen-container {
+        transform: none !important;
     }
 }
 
