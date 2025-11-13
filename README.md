@@ -99,10 +99,3 @@ This project was created for **ML-2500: Introduction to Cross Cultural Studies**
 ## 📄 License
 
 **GPLv3** - See [LICENSE.md](LICENSE.md) for details
-
----
-
-## 🎓 Academic Information
-
-**Course**: ML-2500 - Intro to Cross Cultural Studies  
-**Institution**: Georgia Institute of Technology
