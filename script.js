@@ -4,8 +4,8 @@ const GITHUB_RAW_BASE = 'https://github.com/rockenman1234/kafka/raw/main/vids/';
 // WebM-only playlist. Ensure your WebM files use an audio codec Safari supports (e.g., Opus in recent iOS versions).
 const videoFiles = [
     {
-        webm: GITHUB_RAW_BASE + 'rick-astley.webm',
-        description: 'An upbeat montage with quick cuts and retro styling. Bright colors and energetic pacing create a feel-good atmosphere that works well for lively backgrounds or comedic interludes.'
+        webm: GITHUB_RAW_BASE + 'KAFKA1.webm',
+        description: 'A man walks into a career fair, looking for a job. As he approaches the booth, he is greeted by a representative who has no interest in hiring him.'
     },
     {
         webm: GITHUB_RAW_BASE + 'la-cucaracha.webm',
