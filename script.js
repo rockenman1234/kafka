@@ -17,7 +17,7 @@ const videoFiles = [
     },
     {
         webm: GITHUB_RAW_BASE + 'die-woodys.webm',
-        description: 'A gritty, cinematic vignette with high-contrast lighting and a raw aesthetic. Close-up details and atmospheric grain convey a handcrafted, analogue feel.'
+        description: 'Fichtls Lied by Die Woodys is a novelty German folk-pop song that became infamous on the internet for its quirky, exaggerated performance style and its almost surreal, earworm-like melody. Performed by a fictional “forest family” band, the song features intentionally kitschy vocals, playful yodel-inspired harmonies, and brightly cheerful instrumentation that leans heavily into comedic absurdity. Its lyrics revolve around a lighthearted, childlike celebration of the forest and its characters, embodying an over-the-top gemütlich (cozy) vibe that borders on parody.'
     },
     {
         webm: GITHUB_RAW_BASE + 'murica.webm',
@@ -25,11 +25,11 @@ const videoFiles = [
     },
     {
         webm: GITHUB_RAW_BASE + 'kafka-edit.webm',
-        description: 'A surreal, experimental edit that juxtaposes mundane scenes with unsettling transitions. The piece cultivates a dreamlike, slightly disorienting mood perfect for artful interludes.'
+        description: 'Franz Kafka was a German-speaking Bohemian novelist and short story writer, widely regarded as one of the major figures of 20th-century literature. His work, which fuses elements of realism and the fantastic, typically features isolated protagonists facing bizarre or surrealistic predicaments and incomprehensible social-bureaucratic powers. The term "Kafkaesque" has entered the English language to describe situations reminiscent of his writing, characterized by nightmarish complexity, absurdity, and a sense of helplessness in the face of an oppressive and illogical system.'
     },
     {
         webm: GITHUB_RAW_BASE + 'yodel.webm',
-        description: 'An alpine-inspired sequence balancing serene mountain vistas with playful vocal samples. The clip mixes wide, peaceful panoramas and lively close-ups to create a charming contrast.'
+        description: 'Performed by Franzl Lang, known as the "Yodel King," this traditional Alpine yodeling piece showcases his exceptional vocal range and skill. The song features rapid shifts between chest voice and head voice, characteristic of yodeling, set against a backdrop of folk instrumentation that evokes the mountainous regions of Austria and Switzerland.'
     },
     {
         webm: GITHUB_RAW_BASE + 'holzhacker.webm',
