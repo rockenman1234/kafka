@@ -8,8 +8,8 @@ const videoFiles = [
         description: 'A man walks into a career fair, looking for a job. As he approaches the booth, he is greeted by a representative who has no interest in hiring him.'
     },
     {
-        webm: GITHUB_RAW_BASE + 'la-cucaracha.webm',
-        description: 'A playful, percussive clip with whimsical motion and folk-inspired rhythm. The visuals lean into hand-crafted textures and lively camera moves to keep the viewer smiling.'
+        webm: GITHUB_RAW_BASE + 'KAFKA2.webm',
+        description: 'A woman goes to see her college counselor to discuss her future plans. The counselor is unhelpful and dismissive, leaving the woman feeling lost and uncertain.'
     },
     {
         webm: GITHUB_RAW_BASE + 'messi-glaze.webm',
@@ -33,7 +33,7 @@ const videoFiles = [
     },
     {
         webm: GITHUB_RAW_BASE + 'holzhacker.webm',
-        description: 'A hands-on, industrial vignette focused on craft and motion. Tight shots of tools, wood grain, and repeated gestures emphasize texture and the satisfying rhythm of manual work.'
+        description: 'A group of German woodcutters singing a traditional folk song while chopping wood in an auditorium. The performance combines rhythmic chopping sounds with harmonious vocals, creating a lively and engaging atmosphere that celebrates camaraderie and hard work.'
     },
     // Add more video file objects as needed
 ];
