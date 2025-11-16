@@ -20,8 +20,8 @@ const videoFiles = [
         description: 'Fichtls Lied by Die Woodys is a novelty German folk-pop song that became infamous on the internet for its quirky, exaggerated performance style and its almost surreal, earworm-like melody. Performed by a fictional “forest family” band, the song features intentionally kitschy vocals, playful yodel-inspired harmonies, and brightly cheerful instrumentation that leans heavily into comedic absurdity. Its lyrics revolve around a lighthearted, childlike celebration of the forest and its characters, embodying an over-the-top gemütlich (cozy) vibe that borders on parody.'
     },
     {
-        webm: GITHUB_RAW_BASE + 'murica.webm',
-        description: 'A bold, saturated montage playing with iconic Americana visuals and wide landscapes. Fast edits and heroic compositions give the footage an expansive, anthemic character.'
+        webm: GITHUB_RAW_BASE + 'KAFKA3.webm',
+        description: 'A young man walks into work hoping to make it home, but he finds himself transforming into a giant beast instead.'
     },
     {
         webm: GITHUB_RAW_BASE + 'kafka-edit.webm',
