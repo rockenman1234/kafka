@@ -21,7 +21,7 @@ const videoFiles = [
     },
     {
         webm: GITHUB_RAW_BASE + 'KAFKA3.webm',
-        description: 'A young man walks into work hoping to make it home, but he finds himself transforming into a giant beast instead.'
+        description: 'This skit is inspired by Kafka\'s idea of an ordinary person trapped in an absurd situation. Our employee suddenly turns into a bug and tries to get help, but the healthcare system treats him like another case to process instead of a person. The comedy comes from the confusion, the endless steps, and the feeling of being lost inside a system that never really helps.'
     },
     {
         webm: GITHUB_RAW_BASE + 'kafka-edit.webm',
