@@ -226,6 +226,17 @@ body::before {
     --rolodex-height: 60px; /* default desktop rolodex height */
 }
 
+/* Desktop fit adjustment: ensure full TV (incl. antenna) stays in-bounds at 100% zoom. */
+@media (min-width: 900px) {
+    .tv-container {
+            /* Trim vertical padding a bit and lower overall starting position */
+            padding: 80px 60px 110px 60px; /* was 90px top / 120px bottom */
+            margin-top: 40px;              /* was 60px */
+    }
+    /* Nudge antenna down slightly so it doesn't clip the top edge */
+    .antenna { top: -40px; } /* was -50px */
+}
+
 .tv-brand {
     position: absolute;
     top: 20px;
