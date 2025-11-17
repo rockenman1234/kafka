@@ -186,7 +186,7 @@ function updateRolodexText(channelIndex) {
 
     // Use vertical bottom-to-top marquee on desktop; mobile rolodex is hidden
     if (!isMobileViewport()) {
-        rolodexText.style.animation = 'scrollText 12s linear infinite, textGlow 2s ease-in-out infinite';
+        rolodexText.style.animation = 'scrollText 20s linear infinite, textGlow 2s ease-in-out infinite';
     } else {
         rolodexText.style.animation = 'none';
     }
