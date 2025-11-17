@@ -5,15 +5,15 @@ const GITHUB_RAW_BASE = 'https://github.com/rockenman1234/kafka/raw/main/vids/';
 const videoFiles = [
     {
         webm: GITHUB_RAW_BASE + 'KAFKA1.webm',
-        description: 'A man walks into a career fair, looking for a job. As he approaches the booth, he is greeted by a representative who has no interest in hiring him.'
+        description: 'This story follows a recent graduate who is trying to find a job. Every time he applies, the position gets downgraded from full time to internship to pre-internship to research assistant and then loops back again. It is inspired by Kafka’s idea of being trapped in an absurd cycle where the rules keep changing and no progress ever happens, even when you follow every step.'
     },
     {
         webm: GITHUB_RAW_BASE + 'KAFKA2.webm',
-        description: 'A woman goes to see her college counselor to discuss her future plans. The counselor is unhelpful and dismissive, leaving the woman feeling lost and uncertain.'
+        description: 'This story centers on a student meeting with an advisor who constantly belittles them and questions every choice they make. It is loosely inspired by Kafka\'s The Judgement, where authority figures speak with absolute confidence while the person being judged feels smaller and smaller. The scene highlights how power can distort conversation, turning ordinary guidance into something overwhelming, confusing, and absurd.'
     },
     {
         webm: GITHUB_RAW_BASE + 'KAFKA4.webm',
-        description: 'A classroom of students is working, but one student is sure he has meet his friends in real life before.'
+        description: 'This story follows a student in a Zoom class who says they miss being physically in school. They are confused when everyone insists that school has always been virtual. The idea is Kafkaesque because reality keeps shifting around the student while everyone else treats the absurd situation as normal, leaving them isolated, uncertain, and unable to prove what they know is true.'
     },
     {
         webm: GITHUB_RAW_BASE + 'die-woodys.webm',
@@ -29,11 +29,11 @@ const videoFiles = [
     },
     {
         webm: GITHUB_RAW_BASE + 'yodel.webm',
-        description: 'Performed by Franzl Lang, known as the "Yodel King," this traditional Alpine yodeling piece showcases his exceptional vocal range and skill. The song features rapid shifts between chest voice and head voice, characteristic of yodeling, set against a backdrop of folk instrumentation that evokes the mountainous regions of Austria and Switzerland.'
+        description: 'Performed by Franzl Lang, known as the "Yodel King," this traditional Alpine yodeling piece showcases his exceptional vocal range and skill. The song features rapid shifts between chest voice and head voice, characteristic of yodeling, set against a backdrop of folk instrumentation that evokes the kafkaesque absurdity of rural life.'
     },
     {
         webm: GITHUB_RAW_BASE + 'holzhacker.webm',
-        description: 'A group of German woodcutters singing a traditional folk song while chopping wood in an auditorium. The performance combines rhythmic chopping sounds with harmonious vocals, creating a lively and engaging atmosphere that celebrates camaraderie and hard work.'
+        description: 'A group of German woodcutters singing a traditional folk song while chopping wood in an auditorium. The performance combines rhythmic chopping sounds with harmonious vocals, creating a lively and engaging atmosphere that celebrates camaraderie and hard work. Their synchronized chopping, dancing, and movement adds to the kafkaesque charm of the scene.'
     },
     // Add more video file objects as needed
 ];
